@@ -10,18 +10,28 @@ function ConvertTo-YtmSong {
     .PARAMETER InputObject
         The raw song data from the API response
 
+    .PARAMETER PlaylistId
+        Optional playlist ID to include in the output object. Used when parsing
+        playlist contents to enable pipeline operations like Remove-YtmPlaylistItem.
+
     .OUTPUTS
         YouTubeMusicPS.Song
         Custom object with song properties
 
     .EXAMPLE
         $songs = $response.contents | ForEach-Object { ConvertTo-YtmSong -InputObject $_ }
+
+    .EXAMPLE
+        $songs = $response.contents | ForEach-Object { ConvertTo-YtmSong -InputObject $_ -PlaylistId 'PLxxx' }
     #>
     [CmdletBinding()]
     [OutputType('YouTubeMusicPS.Song')]
     param (
         [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
-        [PSCustomObject]$InputObject
+        [PSCustomObject]$InputObject,
+
+        [Parameter(Mandatory = $false)]
+        [string]$PlaylistId
     )
 
     process {
@@ -139,10 +149,21 @@ function ConvertTo-YtmSong {
             }
         }
 
+        # Extract setVideoId for playlist items (required for removal operations)
+        $setVideoId = $null
+        if ($data.PSObject.Properties['playlistItemData']) {
+            $playlistItemData = $data.playlistItemData
+            if ($playlistItemData.PSObject.Properties['playlistSetVideoId']) {
+                $setVideoId = $playlistItemData.playlistSetVideoId
+            }
+        }
+
         # Return typed object
         [PSCustomObject]@{
             PSTypeName      = 'YouTubeMusicPS.Song'
             VideoId         = $videoId
+            SetVideoId      = $setVideoId
+            PlaylistId      = if ($PlaylistId) { $PlaylistId } else { $null }
             Title           = $title
             Artist          = $artist
             ArtistId        = $artistId
