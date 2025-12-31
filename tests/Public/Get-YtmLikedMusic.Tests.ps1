@@ -1,0 +1,283 @@
+BeforeAll {
+    . "$PSScriptRoot\..\Shared.ps1"
+}
+
+Describe 'Get-YtmLikedMusic' {
+    BeforeAll {
+        $script:testDir = Join-Path $TestDrive 'YouTubeMusicPS'
+        $script:testConfigPath = Join-Path $testDir 'config.json'
+    }
+
+    BeforeEach {
+        # Create test directory and mock config path
+        New-Item -Path $testDir -ItemType Directory -Force | Out-Null
+        Mock Get-YtmConfigurationPath { $script:testConfigPath }
+    }
+
+    AfterEach {
+        if (Test-Path $testDir) {
+            Remove-Item $testDir -Recurse -Force
+        }
+    }
+
+    Context 'Authentication Check' {
+        It 'Throws when not authenticated' {
+            # Ensure no cookies
+            if (Test-Path $testConfigPath) {
+                Remove-Item $testConfigPath -Force
+            }
+            { Get-YtmLikedMusic } | Should -Throw '*Not authenticated*'
+        }
+    }
+
+    Context 'With Authentication' {
+        BeforeEach {
+            # Set up mock cookies
+            $config = @{
+                version = '1.0'
+                auth = @{
+                    sapiSid = 'test-sapisid'
+                    cookies = 'SAPISID=test-sapisid'
+                }
+            }
+            $config | ConvertTo-Json | Set-Content $testConfigPath
+        }
+
+        It 'Calls browse API with correct endpoint' {
+            Mock Invoke-YtmApi {
+                # Return empty response
+                [PSCustomObject]@{
+                    contents = [PSCustomObject]@{
+                        singleColumnBrowseResultsRenderer = [PSCustomObject]@{
+                            tabs = @()
+                        }
+                    }
+                }
+            }
+
+            Get-YtmLikedMusic -WarningAction SilentlyContinue
+            Should -Invoke Invoke-YtmApi -Times 1 -ParameterFilter { $Endpoint -eq 'browse' }
+        }
+    }
+
+    Context 'Limit Parameter' {
+        It 'Has Limit parameter with default of 0' {
+            $command = Get-Command Get-YtmLikedMusic
+            $limitParam = $command.Parameters['Limit']
+            $limitParam | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Validates Limit is non-negative' {
+            { Get-YtmLikedMusic -Limit -1 } | Should -Throw
+        }
+    }
+
+    Context 'Response Parsing' {
+        BeforeEach {
+            # Set up mock cookies
+            $config = @{
+                version = '1.0'
+                auth = @{
+                    sapiSid = 'test-sapisid'
+                    cookies = 'SAPISID=test-sapisid'
+                }
+            }
+            $config | ConvertTo-Json | Set-Content $testConfigPath
+        }
+
+        It 'Returns YouTubeMusicPS.Song objects' {
+            Mock Invoke-YtmApi {
+                # Return a mock response with one song
+                [PSCustomObject]@{
+                    contents = [PSCustomObject]@{
+                        singleColumnBrowseResultsRenderer = [PSCustomObject]@{
+                            tabs = @(
+                                [PSCustomObject]@{
+                                    tabRenderer = [PSCustomObject]@{
+                                        content = [PSCustomObject]@{
+                                            sectionListRenderer = [PSCustomObject]@{
+                                                contents = @(
+                                                    [PSCustomObject]@{
+                                                        musicShelfRenderer = [PSCustomObject]@{
+                                                            contents = @(
+                                                                [PSCustomObject]@{
+                                                                    musicResponsiveListItemRenderer = [PSCustomObject]@{
+                                                                        flexColumns = @(
+                                                                            [PSCustomObject]@{
+                                                                                musicResponsiveListItemFlexColumnRenderer = [PSCustomObject]@{
+                                                                                    text = [PSCustomObject]@{
+                                                                                        runs = @(
+                                                                                            [PSCustomObject]@{ text = 'Test Song' }
+                                                                                        )
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        )
+                                                                        overlay = [PSCustomObject]@{
+                                                                            musicItemThumbnailOverlayRenderer = [PSCustomObject]@{
+                                                                                content = [PSCustomObject]@{
+                                                                                    musicPlayButtonRenderer = [PSCustomObject]@{
+                                                                                        playNavigationEndpoint = [PSCustomObject]@{
+                                                                                            watchEndpoint = [PSCustomObject]@{
+                                                                                                videoId = 'test123'
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            )
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            $results = Get-YtmLikedMusic
+            $results | Should -Not -BeNullOrEmpty
+            $results[0].PSTypeNames | Should -Contain 'YouTubeMusicPS.Song'
+        }
+
+        It 'Respects Limit parameter' {
+            Mock Invoke-YtmApi {
+                # Return multiple songs
+                [PSCustomObject]@{
+                    contents = [PSCustomObject]@{
+                        singleColumnBrowseResultsRenderer = [PSCustomObject]@{
+                            tabs = @(
+                                [PSCustomObject]@{
+                                    tabRenderer = [PSCustomObject]@{
+                                        content = [PSCustomObject]@{
+                                            sectionListRenderer = [PSCustomObject]@{
+                                                contents = @(
+                                                    [PSCustomObject]@{
+                                                        musicShelfRenderer = [PSCustomObject]@{
+                                                            contents = @(
+                                                                [PSCustomObject]@{
+                                                                    musicResponsiveListItemRenderer = [PSCustomObject]@{
+                                                                        flexColumns = @(
+                                                                            [PSCustomObject]@{
+                                                                                musicResponsiveListItemFlexColumnRenderer = [PSCustomObject]@{
+                                                                                    text = [PSCustomObject]@{
+                                                                                        runs = @([PSCustomObject]@{ text = 'Song 1' })
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        )
+                                                                        overlay = [PSCustomObject]@{
+                                                                            musicItemThumbnailOverlayRenderer = [PSCustomObject]@{
+                                                                                content = [PSCustomObject]@{
+                                                                                    musicPlayButtonRenderer = [PSCustomObject]@{
+                                                                                        playNavigationEndpoint = [PSCustomObject]@{
+                                                                                            watchEndpoint = [PSCustomObject]@{ videoId = 'vid1' }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                },
+                                                                [PSCustomObject]@{
+                                                                    musicResponsiveListItemRenderer = [PSCustomObject]@{
+                                                                        flexColumns = @(
+                                                                            [PSCustomObject]@{
+                                                                                musicResponsiveListItemFlexColumnRenderer = [PSCustomObject]@{
+                                                                                    text = [PSCustomObject]@{
+                                                                                        runs = @([PSCustomObject]@{ text = 'Song 2' })
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        )
+                                                                        overlay = [PSCustomObject]@{
+                                                                            musicItemThumbnailOverlayRenderer = [PSCustomObject]@{
+                                                                                content = [PSCustomObject]@{
+                                                                                    musicPlayButtonRenderer = [PSCustomObject]@{
+                                                                                        playNavigationEndpoint = [PSCustomObject]@{
+                                                                                            watchEndpoint = [PSCustomObject]@{ videoId = 'vid2' }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                },
+                                                                [PSCustomObject]@{
+                                                                    musicResponsiveListItemRenderer = [PSCustomObject]@{
+                                                                        flexColumns = @(
+                                                                            [PSCustomObject]@{
+                                                                                musicResponsiveListItemFlexColumnRenderer = [PSCustomObject]@{
+                                                                                    text = [PSCustomObject]@{
+                                                                                        runs = @([PSCustomObject]@{ text = 'Song 3' })
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        )
+                                                                        overlay = [PSCustomObject]@{
+                                                                            musicItemThumbnailOverlayRenderer = [PSCustomObject]@{
+                                                                                content = [PSCustomObject]@{
+                                                                                    musicPlayButtonRenderer = [PSCustomObject]@{
+                                                                                        playNavigationEndpoint = [PSCustomObject]@{
+                                                                                            watchEndpoint = [PSCustomObject]@{ videoId = 'vid3' }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            )
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            $results = @(Get-YtmLikedMusic -Limit 2)
+            $results.Count | Should -Be 2
+        }
+    }
+
+    Context 'Empty Response' {
+        BeforeEach {
+            $config = @{
+                version = '1.0'
+                auth = @{
+                    sapiSid = 'test-sapisid'
+                    cookies = 'SAPISID=test-sapisid'
+                }
+            }
+            $config | ConvertTo-Json | Set-Content $testConfigPath
+        }
+
+        It 'Handles empty library gracefully' {
+            Mock Invoke-YtmApi {
+                [PSCustomObject]@{
+                    contents = [PSCustomObject]@{
+                        singleColumnBrowseResultsRenderer = [PSCustomObject]@{
+                            tabs = @()
+                        }
+                    }
+                }
+            }
+
+            $results = Get-YtmLikedMusic -WarningAction SilentlyContinue
+            $results | Should -BeNullOrEmpty
+        }
+    }
+}
