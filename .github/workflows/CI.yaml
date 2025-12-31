@@ -17,10 +17,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Generate module cache list
+        id: modules
+        shell: pwsh
+        run: |
+          $modules = @()
+          
+          # Load build dependencies
+          if (Test-Path 'build.depend.psd1') {
+            $buildDeps = Import-PowerShellDataFile 'build.depend.psd1'
+            foreach ($key in $buildDeps.Keys) {
+              if ($key -ne 'PSDependOptions' -and $buildDeps[$key].Version) {
+                $version = $buildDeps[$key].Version
+                $modules += "${key}:${version}"
+              }
+            }
+          }
+          
+          # Load runtime dependencies
+          if (Test-Path 'requirements.psd1') {
+            $runtimeDeps = Import-PowerShellDataFile 'requirements.psd1'
+            foreach ($key in $runtimeDeps.Keys) {
+              if ($key -ne 'PSDependOptions' -and $runtimeDeps[$key].Version) {
+                $version = $runtimeDeps[$key].Version
+                $modules += "${key}:${version}"
+              }
+            }
+          }
+          
+          $moduleList = $modules -join ', '
+          Write-Output "modules=$moduleList" >> $env:GITHUB_OUTPUT
+          Write-Host "Module cache list: $moduleList"
+
       - name: Install and cache PowerShell modules
         uses: potatoqualitee/psmodulecache@v6.2
         with:
-          modules-to-cache: Pester:5.7.1, psake:4.9.1, BuildHelpers:2.0.16, PowerShellBuild:0.7.3, PSScriptAnalyzer:1.24.0
+          modules-to-cache: ${{ steps.modules.outputs.modules }}
 
       - name: Install dependencies
         shell: pwsh
@@ -41,10 +73,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Generate module cache list
+        id: modules
+        shell: pwsh
+        run: |
+          $modules = @()
+          
+          # Load build dependencies
+          if (Test-Path 'build.depend.psd1') {
+            $buildDeps = Import-PowerShellDataFile 'build.depend.psd1'
+            foreach ($key in $buildDeps.Keys) {
+              if ($key -ne 'PSDependOptions' -and $buildDeps[$key].Version) {
+                $version = $buildDeps[$key].Version
+                $modules += "${key}:${version}"
+              }
+            }
+          }
+          
+          # Load runtime dependencies
+          if (Test-Path 'requirements.psd1') {
+            $runtimeDeps = Import-PowerShellDataFile 'requirements.psd1'
+            foreach ($key in $runtimeDeps.Keys) {
+              if ($key -ne 'PSDependOptions' -and $runtimeDeps[$key].Version) {
+                $version = $runtimeDeps[$key].Version
+                $modules += "${key}:${version}"
+              }
+            }
+          }
+          
+          $moduleList = $modules -join ', '
+          Write-Output "modules=$moduleList" >> $env:GITHUB_OUTPUT
+          Write-Host "Module cache list: $moduleList"
+
       - name: Install and cache PowerShell modules
         uses: potatoqualitee/psmodulecache@v6.2
         with:
-          modules-to-cache: Pester:5.7.1, psake:4.9.1, BuildHelpers:2.0.16, PowerShellBuild:0.7.3, PSScriptAnalyzer:1.24.0
+          modules-to-cache: ${{ steps.modules.outputs.modules }}
 
       - name: Run tests
         shell: pwsh
