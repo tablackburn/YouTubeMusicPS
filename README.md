@@ -14,6 +14,7 @@ YouTubeMusicPS provides cmdlets for interacting with your YouTube Music library.
 
 - **Guided Authentication**: Step-by-step interactive setup that walks you through copying cookies from your browser
 - **Liked Songs Retrieval**: Get your complete liked songs library with full pagination support
+- **Playlist Management**: List playlists, view contents, and remove songs with tab completion
 - **Progress Tracking**: Visual progress indicator when retrieving large libraries
 - **Pipeline Support**: All cmdlets follow PowerShell conventions for pipeline operations
 - **Secure Storage**: Credentials stored locally in your user profile
@@ -100,6 +101,28 @@ Get-YtmLikedMusic | Select-Object -First 1 | Format-List
 # LikeStatus      : LIKE
 ```
 
+### Managing Playlists
+
+```powershell
+# List all your playlists
+Get-YtmPlaylist
+
+# Get songs in a specific playlist (tab completion works!)
+Get-YtmPlaylist -Name "Chill Vibes"
+
+# Remove a song from a playlist using pipeline
+Get-YtmPlaylist -Name "Chill Vibes" | Where-Object Title -eq "Bad Song" | Remove-YtmPlaylistItem
+
+# Remove multiple songs matching a pattern
+Get-YtmPlaylist -Name "Chill Vibes" | Where-Object Artist -match "Nickelback" | Remove-YtmPlaylistItem
+
+# Remove a song using direct parameters
+Remove-YtmPlaylistItem -Name "Chill Vibes" -Title "Bad Song"
+
+# Preview what would be removed without actually removing
+Get-YtmPlaylist -Name "Chill Vibes" | Where-Object Title -eq "Bad Song" | Remove-YtmPlaylistItem -WhatIf
+```
+
 ### Disconnecting
 
 ```powershell
@@ -178,6 +201,8 @@ YouTubeMusicPS/
 | `Connect-YtmAccount` | Authenticate with YouTube Music (guided or manual) |
 | `Disconnect-YtmAccount` | Remove stored credentials |
 | `Get-YtmLikedMusic` | Retrieve liked songs from your library |
+| `Get-YtmPlaylist` | List playlists or get playlist contents |
+| `Remove-YtmPlaylistItem` | Remove songs from a playlist |
 
 For detailed help on any cmdlet:
 
@@ -190,9 +215,9 @@ Get-Help Get-YtmLikedMusic -Examples
 
 Future features under consideration:
 - Search functionality
-- Playlist management
 - Library statistics
 - Album/artist browsing
+- Playlist creation and editing
 
 ## Contributing
 
