@@ -17,13 +17,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache PowerShell modules
-        uses: actions/cache@v4
+      - name: Install and cache PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2
         with:
-          path: ~/.local/share/powershell/Modules
-          key: ${{ runner.os }}-psmodules-${{ hashFiles('build.depend.psd1') }}
-          restore-keys: |
-            ${{ runner.os }}-psmodules-
+          modules-to-cache: Pester:5.7.1, psake:4.9.1, BuildHelpers:2.0.16, PowerShellBuild:0.7.3, PSScriptAnalyzer:1.24.0
 
       - name: Install dependencies
         shell: pwsh
@@ -44,32 +41,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache PowerShell modules (Linux)
-        if: runner.os == 'Linux'
-        uses: actions/cache@v4
+      - name: Install and cache PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2
         with:
-          path: ~/.local/share/powershell/Modules
-          key: ${{ runner.os }}-psmodules-${{ hashFiles('build.depend.psd1') }}
-          restore-keys: |
-            ${{ runner.os }}-psmodules-
-
-      - name: Cache PowerShell modules (macOS)
-        if: runner.os == 'macOS'
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/powershell/Modules
-          key: ${{ runner.os }}-psmodules-${{ hashFiles('build.depend.psd1') }}
-          restore-keys: |
-            ${{ runner.os }}-psmodules-
-
-      - name: Cache PowerShell modules (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/cache@v4
-        with:
-          path: ~\Documents\PowerShell\Modules
-          key: ${{ runner.os }}-psmodules-${{ hashFiles('build.depend.psd1') }}
-          restore-keys: |
-            ${{ runner.os }}-psmodules-
+          modules-to-cache: Pester:5.7.1, psake:4.9.1, BuildHelpers:2.0.16, PowerShellBuild:0.7.3, PSScriptAnalyzer:1.24.0
 
       - name: Run tests
         shell: pwsh
