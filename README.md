@@ -1,14 +1,14 @@
 # YouTubeMusicPS
 
+[![CI](https://img.shields.io/github/actions/workflow/status/tablackburn/YouTubeMusicPS/CI.yaml?branch=main)](https://github.com/tablackburn/YouTubeMusicPS/actions/workflows/CI.yaml)
+[![codecov](https://codecov.io/gh/tablackburn/YouTubeMusicPS/graph/badge.svg)](https://codecov.io/gh/tablackburn/YouTubeMusicPS)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 [![AI Assisted](https://img.shields.io/badge/AI-Assisted-blue)](https://claude.ai)
 [![License](https://img.shields.io/github/license/tablackburn/YouTubeMusicPS)](LICENSE)
 
-<!-- Future badges when published to PSGallery and CI is set up:
+<!-- Future badges when published to PSGallery:
 [![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/YouTubeMusicPS)](https://www.powershellgallery.com/packages/YouTubeMusicPS/)
 [![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/YouTubeMusicPS)](https://www.powershellgallery.com/packages/YouTubeMusicPS/)
-[![CI](https://img.shields.io/github/actions/workflow/status/tablackburn/YouTubeMusicPS/CI.yaml?branch=main)](https://github.com/tablackburn/YouTubeMusicPS/actions/workflows/CI.yaml)
-[![codecov](https://codecov.io/gh/tablackburn/YouTubeMusicPS/graph/badge.svg)](https://codecov.io/gh/tablackburn/YouTubeMusicPS)
 -->
 
 A PowerShell module for managing YouTube Music through automation and scripting.
