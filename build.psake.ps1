@@ -25,6 +25,55 @@ properties {
 
 Task -Name 'Default' -Depends 'Test'
 
+Task -Name 'GetCacheDependencies' -Description 'Get module dependencies for caching' {
+    # Bootstrap PSDepend if needed
+    if (-not (Get-Module -Name 'PSDepend' -ListAvailable)) {
+        $null = Get-PackageProvider -Name 'NuGet' -ForceBootstrap
+        $psGallery = Get-PSRepository -Name 'PSGallery' -ErrorAction 'SilentlyContinue'
+        if (-not $psGallery) {
+            Register-PSRepository -Default
+            Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+        }
+        elseif ($psGallery.InstallationPolicy -ne 'Trusted') {
+            Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+        }
+        Install-Module -Name 'PSDepend' -Scope 'CurrentUser' -Repository 'PSGallery' -Force
+    }
+    
+    Import-Module -Name 'PSDepend' -Verbose:$false
+    
+    $modules = @()
+    
+    # Get dependencies from build.depend.psd1
+    if (Test-Path 'build.depend.psd1') {
+        $buildDeps = Get-Dependency -Path 'build.depend.psd1'
+        foreach ($dep in $buildDeps) {
+            if ($dep.Version) {
+                $modules += "$($dep.DependencyName):$($dep.Version)"
+            }
+        }
+    }
+    
+    # Get dependencies from requirements.psd1
+    if (Test-Path 'requirements.psd1') {
+        $runtimeDeps = Get-Dependency -Path 'requirements.psd1'
+        foreach ($dep in $runtimeDeps) {
+            if ($dep.Version) {
+                $modules += "$($dep.DependencyName):$($dep.Version)"
+            }
+        }
+    }
+    
+    $moduleList = $modules -join ', '
+    
+    # Output for GitHub Actions or local use
+    if ($env:GITHUB_OUTPUT) {
+        Write-Output "modules=$moduleList" >> $env:GITHUB_OUTPUT
+    }
+    
+    Write-Host "Module cache list: $moduleList"
+}
+
 Task -Name 'Init_Integration' -Description 'Load integration test environment variables from local.settings.ps1' {
     $localSettingsPath = Join-Path -Path $PSScriptRoot -ChildPath 'tests/local.settings.ps1'
     if (Test-Path -Path $localSettingsPath) {
