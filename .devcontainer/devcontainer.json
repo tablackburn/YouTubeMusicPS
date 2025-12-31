@@ -1,0 +1,39 @@
+{
+  "name": "YouTubeMusicPS DevContainer",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "DEVCONTAINER": "true"
+  },
+  "mounts": [
+    "source=ytmps-pwsh-modules,target=/home/vscode/.local/share/powershell/Modules,type=volume",
+    "source=ytmps-pwsh-history,target=/home/vscode/.local/share/powershell/PSReadLine,type=volume"
+  ],
+  "postCreateCommand": "pwsh ./build.ps1 -Task Init -Bootstrap",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.powershell",
+        "anthropic.claude-code"
+      ],
+      "settings": {
+        "powershell.codeFormatting.preset": "OTBS",
+        "powershell.scriptAnalysis.settingsPath": "./PSScriptAnalyzerSettings.psd1",
+        "terminal.integrated.defaultProfile.linux": "pwsh",
+        "terminal.integrated.profiles.linux": {
+          "pwsh": {
+            "path": "/usr/bin/pwsh",
+            "icon": "terminal-powershell"
+          },
+          "bash": {
+            "path": "/bin/bash",
+            "icon": "terminal-bash"
+          }
+        }
+      }
+    }
+  }
+}

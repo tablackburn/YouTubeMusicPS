@@ -67,10 +67,14 @@ if ($Bootstrap) {
     $null = PackageManagement\Get-PackageProvider -Name 'NuGet' -ForceBootstrap
     if ((Test-Path -Path $dependencyFilePath)) {
         # Ensure PSGallery is registered and trusted
-        if (-not (Get-PSRepository -Name 'PSGallery' -ErrorAction 'SilentlyContinue')) {
+        $psGallery = Get-PSRepository -Name 'PSGallery' -ErrorAction 'SilentlyContinue'
+        if (-not $psGallery) {
             Register-PSRepository -Default
+            Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
         }
-        Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+        elseif ($psGallery.InstallationPolicy -ne 'Trusted') {
+            Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+        }
 
         if (-not (Get-Module -Name 'PSDepend' -ListAvailable)) {
             Install-Module -Name 'PSDepend' -Scope 'CurrentUser' -Repository 'PSGallery' -Force
