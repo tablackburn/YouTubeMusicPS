@@ -21,26 +21,44 @@ jobs:
         id: modules
         shell: pwsh
         run: |
+          # Bootstrap package management (like build.ps1)
+          $null = Get-PackageProvider -Name 'NuGet' -ForceBootstrap
+          
+          # Ensure PSGallery is registered and trusted
+          $psGallery = Get-PSRepository -Name 'PSGallery' -ErrorAction 'SilentlyContinue'
+          if (-not $psGallery) {
+            Register-PSRepository -Default
+            Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+          }
+          elseif ($psGallery.InstallationPolicy -ne 'Trusted') {
+            Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+          }
+          
+          # Install PSDepend if needed
+          if (-not (Get-Module -Name 'PSDepend' -ListAvailable)) {
+            Install-Module -Name 'PSDepend' -Scope 'CurrentUser' -Repository 'PSGallery' -Force
+          }
+          
+          Import-Module -Name 'PSDepend' -Verbose:$false
+          
           $modules = @()
           
-          # Load build dependencies
+          # Get dependencies from build.depend.psd1 using PSDepend
           if (Test-Path 'build.depend.psd1') {
-            $buildDeps = Import-PowerShellDataFile 'build.depend.psd1'
-            foreach ($key in $buildDeps.Keys) {
-              if ($key -ne 'PSDependOptions' -and $buildDeps[$key].Version) {
-                $version = $buildDeps[$key].Version
-                $modules += "${key}:${version}"
+            $buildDeps = Get-Dependency -Path 'build.depend.psd1'
+            foreach ($dep in $buildDeps) {
+              if ($dep.Version) {
+                $modules += "$($dep.DependencyName):$($dep.Version)"
               }
             }
           }
           
-          # Load runtime dependencies
+          # Get dependencies from requirements.psd1 using PSDepend
           if (Test-Path 'requirements.psd1') {
-            $runtimeDeps = Import-PowerShellDataFile 'requirements.psd1'
-            foreach ($key in $runtimeDeps.Keys) {
-              if ($key -ne 'PSDependOptions' -and $runtimeDeps[$key].Version) {
-                $version = $runtimeDeps[$key].Version
-                $modules += "${key}:${version}"
+            $runtimeDeps = Get-Dependency -Path 'requirements.psd1'
+            foreach ($dep in $runtimeDeps) {
+              if ($dep.Version) {
+                $modules += "$($dep.DependencyName):$($dep.Version)"
               }
             }
           }
@@ -77,26 +95,44 @@ jobs:
         id: modules
         shell: pwsh
         run: |
+          # Bootstrap package management (like build.ps1)
+          $null = Get-PackageProvider -Name 'NuGet' -ForceBootstrap
+          
+          # Ensure PSGallery is registered and trusted
+          $psGallery = Get-PSRepository -Name 'PSGallery' -ErrorAction 'SilentlyContinue'
+          if (-not $psGallery) {
+            Register-PSRepository -Default
+            Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+          }
+          elseif ($psGallery.InstallationPolicy -ne 'Trusted') {
+            Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+          }
+          
+          # Install PSDepend if needed
+          if (-not (Get-Module -Name 'PSDepend' -ListAvailable)) {
+            Install-Module -Name 'PSDepend' -Scope 'CurrentUser' -Repository 'PSGallery' -Force
+          }
+          
+          Import-Module -Name 'PSDepend' -Verbose:$false
+          
           $modules = @()
           
-          # Load build dependencies
+          # Get dependencies from build.depend.psd1 using PSDepend
           if (Test-Path 'build.depend.psd1') {
-            $buildDeps = Import-PowerShellDataFile 'build.depend.psd1'
-            foreach ($key in $buildDeps.Keys) {
-              if ($key -ne 'PSDependOptions' -and $buildDeps[$key].Version) {
-                $version = $buildDeps[$key].Version
-                $modules += "${key}:${version}"
+            $buildDeps = Get-Dependency -Path 'build.depend.psd1'
+            foreach ($dep in $buildDeps) {
+              if ($dep.Version) {
+                $modules += "$($dep.DependencyName):$($dep.Version)"
               }
             }
           }
           
-          # Load runtime dependencies
+          # Get dependencies from requirements.psd1 using PSDepend
           if (Test-Path 'requirements.psd1') {
-            $runtimeDeps = Import-PowerShellDataFile 'requirements.psd1'
-            foreach ($key in $runtimeDeps.Keys) {
-              if ($key -ne 'PSDependOptions' -and $runtimeDeps[$key].Version) {
-                $version = $runtimeDeps[$key].Version
-                $modules += "${key}:${version}"
+            $runtimeDeps = Get-Dependency -Path 'requirements.psd1'
+            foreach ($dep in $runtimeDeps) {
+              if ($dep.Version) {
+                $modules += "$($dep.DependencyName):$($dep.Version)"
               }
             }
           }
