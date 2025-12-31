@@ -16,7 +16,7 @@ function Get-YtmStoredCookies {
     .EXAMPLE
         $cookies = Get-YtmStoredCookies
         if ($cookies) {
-            $auth = Get-YtmSapiSidHash -SapiSid $cookies.SapiSid
+            $authorization = Get-YtmSapiSidHash -SapiSid $cookies.SapiSid
         }
     #>
     [CmdletBinding()]

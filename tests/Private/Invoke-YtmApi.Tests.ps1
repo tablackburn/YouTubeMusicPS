@@ -14,14 +14,14 @@ Describe 'Invoke-YtmApi' {
         Mock Get-YtmConfigurationPath { $script:testConfigPath }
 
         # Set up mock cookies
-        $config = @{
+        $testConfiguration = @{
             version = '1.0'
             auth = @{
                 sapiSid = 'test-sapisid-12345'
                 cookies = 'SAPISID=test-sapisid-12345; SSID=testssid'
             }
         }
-        $config | ConvertTo-Json | Set-Content $testConfigPath
+        $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
     }
 
     AfterEach {
@@ -33,8 +33,8 @@ Describe 'Invoke-YtmApi' {
     Context 'Authentication Requirements' {
         It 'Throws when not authenticated and no cookies provided' {
             # Remove auth from config
-            $config = @{ version = '1.0'; auth = $null }
-            $config | ConvertTo-Json | Set-Content $testConfigPath
+            $testConfiguration = @{ version = '1.0'; auth = $null }
+            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
 
             { Invoke-YtmApi -Endpoint 'browse' } | Should -Throw '*Not authenticated*'
         }

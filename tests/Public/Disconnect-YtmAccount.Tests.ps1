@@ -14,14 +14,14 @@ Describe 'Disconnect-YtmAccount' {
         Mock Get-YtmConfigurationPath { $script:testConfigPath }
 
         # Set up existing cookies
-        $config = @{
+        $testConfiguration = @{
             version = '1.0'
             auth = @{
                 sapiSid = 'existing-sapisid'
                 cookies = 'existing-cookies'
             }
         }
-        $config | ConvertTo-Json | Set-Content $testConfigPath
+        $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
     }
 
     AfterEach {
@@ -45,8 +45,8 @@ Describe 'Disconnect-YtmAccount' {
         It 'Preserves configuration file with version' {
             Disconnect-YtmAccount
             Test-Path $testConfigPath | Should -Be $true
-            $config = Get-Content $testConfigPath -Raw | ConvertFrom-Json
-            $config.version | Should -Be '1.0'
+            $testConfiguration = Get-Content $testConfigPath -Raw | ConvertFrom-Json
+            $testConfiguration.version | Should -Be '1.0'
         }
     }
 

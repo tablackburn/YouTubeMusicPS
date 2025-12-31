@@ -33,14 +33,14 @@ Describe 'Get-YtmLikedMusic' {
     Context 'With Authentication' {
         BeforeEach {
             # Set up mock cookies
-            $config = @{
+            $testConfiguration = @{
                 version = '1.0'
                 auth = @{
                     sapiSid = 'test-sapisid'
                     cookies = 'SAPISID=test-sapisid'
                 }
             }
-            $config | ConvertTo-Json | Set-Content $testConfigPath
+            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
         }
 
         It 'Calls browse API with correct endpoint' {
@@ -75,14 +75,14 @@ Describe 'Get-YtmLikedMusic' {
     Context 'Response Parsing' {
         BeforeEach {
             # Set up mock cookies
-            $config = @{
+            $testConfiguration = @{
                 version = '1.0'
                 auth = @{
                     sapiSid = 'test-sapisid'
                     cookies = 'SAPISID=test-sapisid'
                 }
             }
-            $config | ConvertTo-Json | Set-Content $testConfigPath
+            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
         }
 
         It 'Returns YouTubeMusicPS.Song objects' {
@@ -255,14 +255,14 @@ Describe 'Get-YtmLikedMusic' {
 
     Context 'Empty Response' {
         BeforeEach {
-            $config = @{
+            $testConfiguration = @{
                 version = '1.0'
                 auth = @{
                     sapiSid = 'test-sapisid'
                     cookies = 'SAPISID=test-sapisid'
                 }
             }
-            $config | ConvertTo-Json | Set-Content $testConfigPath
+            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
         }
 
         It 'Handles empty library gracefully' {

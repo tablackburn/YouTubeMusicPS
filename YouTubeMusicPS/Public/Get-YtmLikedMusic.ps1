@@ -121,9 +121,9 @@ function Get-YtmLikedMusic {
         if ($MusicShelf.PSObject.Properties['continuations']) {
             $continuations = $MusicShelf.continuations
             if ($continuations -and $continuations.Count -gt 0) {
-                $contData = $continuations[0]
-                if ($contData.PSObject.Properties['nextContinuationData']) {
-                    return $contData.nextContinuationData.continuation
+                $continuationItem = $continuations[0]
+                if ($continuationItem.PSObject.Properties['nextContinuationData']) {
+                    return $continuationItem.nextContinuationData.continuation
                 }
             }
         }
@@ -206,9 +206,9 @@ function Get-YtmLikedMusic {
                 $contents = $shelfContinuation.contents
                 # Check for next continuation
                 if ($shelfContinuation.PSObject.Properties['continuations']) {
-                    $contData = $shelfContinuation.continuations[0]
-                    if ($contData.PSObject.Properties['nextContinuationData']) {
-                        $newContinuationToken = $contData.nextContinuationData.continuation
+                    $continuationItem = $shelfContinuation.continuations[0]
+                    if ($continuationItem.PSObject.Properties['nextContinuationData']) {
+                        $newContinuationToken = $continuationItem.nextContinuationData.continuation
                     }
                 }
             }

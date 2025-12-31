@@ -36,28 +36,28 @@ Describe 'Cookie Storage Functions' {
             }
 
             It 'Returns null when auth is null' {
-                $config = @{ version = '1.0'; auth = $null }
-                $config | ConvertTo-Json | Set-Content $testConfigPath
+                $testConfiguration = @{ version = '1.0'; auth = $null }
+                $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
                 $result = Get-YtmStoredCookies
                 $result | Should -BeNullOrEmpty
             }
 
             It 'Returns null when sapiSid is missing' {
-                $config = @{
+                $testConfiguration = @{
                     version = '1.0'
                     auth = @{ cookies = 'some-cookies' }
                 }
-                $config | ConvertTo-Json | Set-Content $testConfigPath
+                $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
                 $result = Get-YtmStoredCookies
                 $result | Should -BeNullOrEmpty
             }
 
             It 'Returns null when cookies is missing' {
-                $config = @{
+                $testConfiguration = @{
                     version = '1.0'
                     auth = @{ sapiSid = 'some-sapisid' }
                 }
-                $config | ConvertTo-Json | Set-Content $testConfigPath
+                $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
                 $result = Get-YtmStoredCookies
                 $result | Should -BeNullOrEmpty
             }
@@ -65,14 +65,14 @@ Describe 'Cookie Storage Functions' {
 
         Context 'With Stored Cookies' {
             BeforeEach {
-                $config = @{
+                $testConfiguration = @{
                     version = '1.0'
                     auth = @{
                         sapiSid = 'stored-sapisid'
                         cookies = 'stored-cookies-string'
                     }
                 }
-                $config | ConvertTo-Json | Set-Content $testConfigPath
+                $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
             }
 
             It 'Returns a PSCustomObject' {
@@ -122,8 +122,8 @@ Describe 'Cookie Storage Functions' {
 
             It 'Preserves configuration version' {
                 Set-YtmStoredCookies -SapiSid 'test' -Cookies 'test-cookies'
-                $config = Get-Content $testConfigPath -Raw | ConvertFrom-Json
-                $config.version | Should -Be '1.0'
+                $testConfiguration = Get-Content $testConfigPath -Raw | ConvertFrom-Json
+                $testConfiguration.version | Should -Be '1.0'
             }
         }
 
@@ -161,14 +161,14 @@ Describe 'Cookie Storage Functions' {
 
             It 'Preserves configuration version after removal' {
                 Remove-YtmStoredCookies
-                $config = Get-Content $testConfigPath -Raw | ConvertFrom-Json
-                $config.version | Should -Be '1.0'
+                $testConfiguration = Get-Content $testConfigPath -Raw | ConvertFrom-Json
+                $testConfiguration.version | Should -Be '1.0'
             }
 
             It 'Sets auth to null' {
                 Remove-YtmStoredCookies
-                $config = Get-Content $testConfigPath -Raw | ConvertFrom-Json
-                $config.auth | Should -BeNullOrEmpty
+                $testConfiguration = Get-Content $testConfigPath -Raw | ConvertFrom-Json
+                $testConfiguration.auth | Should -BeNullOrEmpty
             }
         }
 

@@ -38,12 +38,12 @@ function Get-YtmSapiSidHash {
     $timestamp = [int64]([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
 
     # Build the string to hash: "{timestamp} {sapisid} {origin}"
-    $authString = "$timestamp $SapiSid $Origin"
+    $authorizationString = "$timestamp $SapiSid $Origin"
 
     # Calculate SHA1 hash
     $sha1 = [System.Security.Cryptography.SHA1]::Create()
     try {
-        $bytes = [System.Text.Encoding]::UTF8.GetBytes($authString)
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($authorizationString)
         $hashBytes = $sha1.ComputeHash($bytes)
         $hexHash = [BitConverter]::ToString($hashBytes).Replace('-', '').ToLower()
     }

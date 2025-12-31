@@ -76,14 +76,14 @@ Describe 'Get-YtmConfiguration' {
 
     Context 'Valid Configuration File' {
         BeforeEach {
-            $config = @{
+            $testConfiguration = @{
                 version = '1.0'
                 auth = @{
                     sapiSid = 'test-sapisid'
                     cookies = 'test-cookies'
                 }
             }
-            $config | ConvertTo-Json | Set-Content -Path $testConfigPath
+            $testConfiguration | ConvertTo-Json | Set-Content -Path $testConfigPath
         }
 
         It 'Reads configuration from file' {
@@ -111,8 +111,8 @@ Describe 'Get-YtmConfiguration' {
         }
 
         It 'Throws when configuration is missing version property' {
-            $config = @{ auth = $null }
-            $config | ConvertTo-Json | Set-Content -Path $testConfigPath
+            $testConfiguration = @{ auth = $null }
+            $testConfiguration | ConvertTo-Json | Set-Content -Path $testConfigPath
             { Get-YtmConfiguration } | Should -Throw "*missing 'version' property*"
         }
     }
@@ -141,53 +141,53 @@ Describe 'Set-YtmConfiguration' {
 
     Context 'Writing Configuration' {
         It 'Creates the configuration file' {
-            $config = [PSCustomObject]@{
+            $testConfiguration = [PSCustomObject]@{
                 version = '1.0'
                 auth = $null
             }
-            Set-YtmConfiguration -Configuration $config
+            Set-YtmConfiguration -Configuration $testConfiguration
             Test-Path $testConfigPath | Should -Be $true
         }
 
         It 'Writes valid JSON' {
-            $config = [PSCustomObject]@{
+            $testConfiguration = [PSCustomObject]@{
                 version = '1.0'
                 auth = $null
             }
-            Set-YtmConfiguration -Configuration $config
+            Set-YtmConfiguration -Configuration $testConfiguration
             { Get-Content $testConfigPath -Raw | ConvertFrom-Json } | Should -Not -Throw
         }
 
         It 'Writes correct version' {
-            $config = [PSCustomObject]@{
+            $testConfiguration = [PSCustomObject]@{
                 version = '2.0'
                 auth = $null
             }
-            Set-YtmConfiguration -Configuration $config
+            Set-YtmConfiguration -Configuration $testConfiguration
             $saved = Get-Content $testConfigPath -Raw | ConvertFrom-Json
             $saved.version | Should -Be '2.0'
         }
 
         It 'Writes auth data correctly' {
-            $config = [PSCustomObject]@{
+            $testConfiguration = [PSCustomObject]@{
                 version = '1.0'
                 auth = [PSCustomObject]@{
                     sapiSid = 'my-sapisid'
                     cookies = 'my-cookies'
                 }
             }
-            Set-YtmConfiguration -Configuration $config
+            Set-YtmConfiguration -Configuration $testConfiguration
             $saved = Get-Content $testConfigPath -Raw | ConvertFrom-Json
             $saved.auth.sapiSid | Should -Be 'my-sapisid'
             $saved.auth.cookies | Should -Be 'my-cookies'
         }
 
         It 'Overwrites existing configuration' {
-            $config1 = [PSCustomObject]@{ version = '1.0'; auth = $null }
-            $config2 = [PSCustomObject]@{ version = '1.0'; auth = [PSCustomObject]@{ sapiSid = 'new' } }
+            $testConfiguration1 = [PSCustomObject]@{ version = '1.0'; auth = $null }
+            $testConfiguration2 = [PSCustomObject]@{ version = '1.0'; auth = [PSCustomObject]@{ sapiSid = 'new' } }
 
-            Set-YtmConfiguration -Configuration $config1
-            Set-YtmConfiguration -Configuration $config2
+            Set-YtmConfiguration -Configuration $testConfiguration1
+            Set-YtmConfiguration -Configuration $testConfiguration2
 
             $saved = Get-Content $testConfigPath -Raw | ConvertFrom-Json
             $saved.auth.sapiSid | Should -Be 'new'
@@ -196,8 +196,8 @@ Describe 'Set-YtmConfiguration' {
 
     Context 'Validation' {
         It 'Throws when configuration is missing version' {
-            $config = [PSCustomObject]@{ auth = $null }
-            { Set-YtmConfiguration -Configuration $config } | Should -Throw "*missing 'version' property*"
+            $testConfiguration = [PSCustomObject]@{ auth = $null }
+            { Set-YtmConfiguration -Configuration $testConfiguration } | Should -Throw "*missing 'version' property*"
         }
 
         It 'Throws when configuration is null' {
@@ -207,8 +207,8 @@ Describe 'Set-YtmConfiguration' {
 
     Context 'ShouldProcess Support' {
         It 'Supports -WhatIf' {
-            $config = [PSCustomObject]@{ version = '1.0'; auth = $null }
-            Set-YtmConfiguration -Configuration $config -WhatIf
+            $testConfiguration = [PSCustomObject]@{ version = '1.0'; auth = $null }
+            Set-YtmConfiguration -Configuration $testConfiguration -WhatIf
             Test-Path $testConfigPath | Should -Be $false
         }
     }
@@ -222,8 +222,8 @@ Describe 'Set-YtmConfiguration' {
         }
 
         It 'Creates directory if it does not exist' {
-            $config = [PSCustomObject]@{ version = '1.0'; auth = $null }
-            Set-YtmConfiguration -Configuration $config
+            $testConfiguration = [PSCustomObject]@{ version = '1.0'; auth = $null }
+            Set-YtmConfiguration -Configuration $testConfiguration
             Test-Path $testDir | Should -Be $true
         }
     }
