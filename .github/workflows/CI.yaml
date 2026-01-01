@@ -17,6 +17,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache PSDepend module
+        uses: potatoqualitee/psmodulecache@v6.2
+        with:
+          modules-to-cache: PSDepend
+
       - name: Install PSDepend for dependency listing
         shell: pwsh
         run: |
@@ -61,6 +66,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Cache PSDepend module
+        uses: potatoqualitee/psmodulecache@v6.2
+        with:
+          modules-to-cache: PSDepend
 
       - name: Install PSDepend for dependency listing
         shell: pwsh
