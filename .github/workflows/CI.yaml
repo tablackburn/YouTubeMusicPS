@@ -17,10 +17,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate module cache list
+      - name: Install PSDepend for dependency listing
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -Name 'PSDepend' -ListAvailable)) {
+            $null = Get-PackageProvider -Name 'NuGet' -ForceBootstrap
+            $psGallery = Get-PSRepository -Name 'PSGallery' -ErrorAction 'SilentlyContinue'
+            if (-not $psGallery) {
+              Register-PSRepository -Default
+              Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+            }
+            elseif ($psGallery.InstallationPolicy -ne 'Trusted') {
+              Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+            }
+            Install-Module -Name 'PSDepend' -Scope 'CurrentUser' -Repository 'PSGallery' -Force
+          }
+
+      - name: Get dependency list for caching
         id: modules
         shell: pwsh
-        run: ./build.ps1 -Task GetCacheDependencies
+        run: ./build.ps1 -Task GetDependencies
 
       - name: Install and cache PowerShell modules
         uses: potatoqualitee/psmodulecache@v6.2
@@ -46,10 +62,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate module cache list
+      - name: Install PSDepend for dependency listing
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -Name 'PSDepend' -ListAvailable)) {
+            $null = Get-PackageProvider -Name 'NuGet' -ForceBootstrap
+            $psGallery = Get-PSRepository -Name 'PSGallery' -ErrorAction 'SilentlyContinue'
+            if (-not $psGallery) {
+              Register-PSRepository -Default
+              Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+            }
+            elseif ($psGallery.InstallationPolicy -ne 'Trusted') {
+              Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+            }
+            Install-Module -Name 'PSDepend' -Scope 'CurrentUser' -Repository 'PSGallery' -Force
+          }
+
+      - name: Get dependency list for caching
         id: modules
         shell: pwsh
-        run: ./build.ps1 -Task GetCacheDependencies
+        run: ./build.ps1 -Task GetDependencies
 
       - name: Install and cache PowerShell modules
         uses: potatoqualitee/psmodulecache@v6.2

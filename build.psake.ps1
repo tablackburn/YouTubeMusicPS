@@ -25,19 +25,10 @@ properties {
 
 Task -Name 'Default' -Depends 'Test'
 
-Task -Name 'GetCacheDependencies' -Description 'Get module dependencies for caching' {
-    # Bootstrap PSDepend if needed
+Task -Name 'GetDependencies' -Description 'List module dependencies from dependency files' {
+    # Requires PSDepend to be available
     if (-not (Get-Module -Name 'PSDepend' -ListAvailable)) {
-        $null = Get-PackageProvider -Name 'NuGet' -ForceBootstrap
-        $psGallery = Get-PSRepository -Name 'PSGallery' -ErrorAction 'SilentlyContinue'
-        if (-not $psGallery) {
-            Register-PSRepository -Default
-            Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
-        }
-        elseif ($psGallery.InstallationPolicy -ne 'Trusted') {
-            Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
-        }
-        Install-Module -Name 'PSDepend' -Scope 'CurrentUser' -Repository 'PSGallery' -Force
+        throw 'PSDepend module is not available. Please run with -Bootstrap flag first.'
     }
     
     Import-Module -Name 'PSDepend' -Verbose:$false
