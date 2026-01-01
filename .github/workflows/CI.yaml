@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Cache PSDepend module
-        uses: potatoqualitee/psmodulecache@v6.2
+        uses: potatoqualitee/psmodulecache@v6.2.1
         with:
           modules-to-cache: PSDepend
 
@@ -44,7 +44,7 @@ jobs:
         run: ./build.ps1 -Task GetDependencies
 
       - name: Install and cache PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.2
+        uses: potatoqualitee/psmodulecache@v6.2.1
         with:
           modules-to-cache: ${{ steps.modules.outputs.modules }}
 
@@ -68,7 +68,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Cache PSDepend module
-        uses: potatoqualitee/psmodulecache@v6.2
+        uses: potatoqualitee/psmodulecache@v6.2.1
         with:
           modules-to-cache: PSDepend
 
@@ -94,7 +94,7 @@ jobs:
         run: ./build.ps1 -Task GetDependencies
 
       - name: Install and cache PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.2
+        uses: potatoqualitee/psmodulecache@v6.2.1
         with:
           modules-to-cache: ${{ steps.modules.outputs.modules }}
 
