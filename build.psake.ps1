@@ -25,6 +25,46 @@ properties {
 
 Task -Name 'Default' -Depends 'Test'
 
+Task -Name 'GetDependencies' -Description 'List module dependencies from dependency files' {
+    # Requires PSDepend to be available
+    if (-not (Get-Module -Name 'PSDepend' -ListAvailable)) {
+        throw 'PSDepend module is not available. Please run with -Bootstrap flag first.'
+    }
+    
+    Import-Module -Name 'PSDepend' -Verbose:$false
+    
+    $modules = @()
+    
+    # Get dependencies from build.depend.psd1
+    if (Test-Path 'build.depend.psd1') {
+        $buildDeps = Get-Dependency -Path 'build.depend.psd1'
+        foreach ($dep in $buildDeps) {
+            if ($dep.Version) {
+                $modules += "$($dep.DependencyName):$($dep.Version)"
+            }
+        }
+    }
+    
+    # Get dependencies from requirements.psd1
+    if (Test-Path 'requirements.psd1') {
+        $runtimeDeps = Get-Dependency -Path 'requirements.psd1'
+        foreach ($dep in $runtimeDeps) {
+            if ($dep.Version) {
+                $modules += "$($dep.DependencyName):$($dep.Version)"
+            }
+        }
+    }
+    
+    $moduleList = $modules -join ', '
+    
+    # Output for GitHub Actions or local use
+    if ($env:GITHUB_OUTPUT) {
+        Write-Output "modules=$moduleList" >> $env:GITHUB_OUTPUT
+    }
+    
+    Write-Host "Module cache list: $moduleList"
+}
+
 Task -Name 'Init_Integration' -Description 'Load integration test environment variables from local.settings.ps1' {
     $localSettingsPath = Join-Path -Path $PSScriptRoot -ChildPath 'tests/local.settings.ps1'
     if (Test-Path -Path $localSettingsPath) {
