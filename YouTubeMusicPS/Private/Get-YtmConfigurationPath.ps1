@@ -15,7 +15,8 @@ function Get-YtmConfigurationPath {
     [CmdletBinding()]
     param ()
 
-    $runningOnWindows = $PSVersionTable.PSVersion.Major -lt 6 -or $IsWindows
+    # PS 5.1 doesn't define $IsWindows, so check if the variable exists before using it
+    $runningOnWindows = $PSVersionTable.PSVersion.Major -lt 6 -or ((Test-Path variable:IsWindows) -and $IsWindows)
 
     if ($runningOnWindows) {
         # Try OneDrive location first (syncs across machines)

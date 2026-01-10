@@ -116,11 +116,17 @@ function ConvertTo-YtmSong {
         # Parse duration to seconds
         if ($duration) {
             $parts = $duration -split ':'
-            if ($parts.Count -eq 2) {
-                $durationSeconds = [int]$parts[0] * 60 + [int]$parts[1]
+            try {
+                if ($parts.Count -eq 2) {
+                    $durationSeconds = [int]$parts[0] * 60 + [int]$parts[1]
+                }
+                elseif ($parts.Count -eq 3) {
+                    $durationSeconds = [int]$parts[0] * 3600 + [int]$parts[1] * 60 + [int]$parts[2]
+                }
             }
-            elseif ($parts.Count -eq 3) {
-                $durationSeconds = [int]$parts[0] * 3600 + [int]$parts[1] * 60 + [int]$parts[2]
+            catch {
+                Write-Verbose "Could not parse duration '$duration': $($_.Exception.Message)"
+                $durationSeconds = $null
             }
         }
 

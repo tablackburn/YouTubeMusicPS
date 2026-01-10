@@ -71,6 +71,11 @@ function Connect-YtmAccount {
         throw "Could not find SAPISID or __Secure-3PAPISID in the provided cookies. Please ensure you copied the full cookie string."
     }
 
+    # Validate SAPISID format (should contain only alphanumeric, underscore, dash, slash, dot)
+    if ($sapiSid -notmatch '^[A-Za-z0-9_/\-\.]+$') {
+        throw "Extracted SAPISID contains unexpected characters. Please ensure you copied the cookie string correctly."
+    }
+
     Set-YtmStoredCookies -SapiSid $sapiSid -Cookies $cookieString
 
     # Test the authentication

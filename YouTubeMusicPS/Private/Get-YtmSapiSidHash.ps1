@@ -22,6 +22,11 @@ function Get-YtmSapiSidHash {
 
     .NOTES
         Algorithm reverse engineered from: https://stackoverflow.com/a/32065323/5726546
+
+        This uses SHA1 because it is YouTube's required authentication scheme for SAPISIDHASH.
+        While SHA1 is considered cryptographically weak for signatures and certificates, it is
+        acceptable here as a keyed hash for API authentication where the secret (SAPISID) is
+        already known only to the authenticated user.
     #>
     [CmdletBinding()]
     [OutputType([string])]
