@@ -253,6 +253,258 @@ Describe 'Get-YtmLikedMusic' {
         }
     }
 
+    Context 'Pagination' {
+        BeforeEach {
+            $testConfiguration = @{
+                version = '1.0'
+                auth = @{
+                    sapiSid = 'test-sapisid'
+                    cookies = 'SAPISID=test-sapisid'
+                }
+            }
+            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
+
+            # Helper to create a song item
+            $script:CreateSongItem = {
+                param($Title, $VideoId)
+                [PSCustomObject]@{
+                    musicResponsiveListItemRenderer = [PSCustomObject]@{
+                        flexColumns = @(
+                            [PSCustomObject]@{
+                                musicResponsiveListItemFlexColumnRenderer = [PSCustomObject]@{
+                                    text = [PSCustomObject]@{
+                                        runs = @([PSCustomObject]@{ text = $Title })
+                                    }
+                                }
+                            }
+                        )
+                        overlay = [PSCustomObject]@{
+                            musicItemThumbnailOverlayRenderer = [PSCustomObject]@{
+                                content = [PSCustomObject]@{
+                                    musicPlayButtonRenderer = [PSCustomObject]@{
+                                        playNavigationEndpoint = [PSCustomObject]@{
+                                            watchEndpoint = [PSCustomObject]@{ videoId = $VideoId }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        It 'Fetches continuation pages when token is present' {
+            $callCount = 0
+            Mock Invoke-YtmApi {
+                $callCount++
+                if ($ContinuationToken) {
+                    # Continuation response (page 2)
+                    [PSCustomObject]@{
+                        continuationContents = [PSCustomObject]@{
+                            musicShelfContinuation = [PSCustomObject]@{
+                                contents = @(
+                                    (& $script:CreateSongItem 'Song 3' 'vid3'),
+                                    (& $script:CreateSongItem 'Song 4' 'vid4')
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    # Initial response (page 1) with continuation token
+                    [PSCustomObject]@{
+                        contents = [PSCustomObject]@{
+                            singleColumnBrowseResultsRenderer = [PSCustomObject]@{
+                                tabs = @(
+                                    [PSCustomObject]@{
+                                        tabRenderer = [PSCustomObject]@{
+                                            content = [PSCustomObject]@{
+                                                sectionListRenderer = [PSCustomObject]@{
+                                                    contents = @(
+                                                        [PSCustomObject]@{
+                                                            musicShelfRenderer = [PSCustomObject]@{
+                                                                contents = @(
+                                                                    (& $script:CreateSongItem 'Song 1' 'vid1'),
+                                                                    (& $script:CreateSongItem 'Song 2' 'vid2')
+                                                                )
+                                                                continuations = @(
+                                                                    [PSCustomObject]@{
+                                                                        nextContinuationData = [PSCustomObject]@{
+                                                                            continuation = 'token123'
+                                                                        }
+                                                                    }
+                                                                )
+                                                            }
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            $results = @(Get-YtmLikedMusic)
+
+            Should -Invoke Invoke-YtmApi -Times 2
+            $results.Count | Should -Be 4
+            $results[0].Title | Should -Be 'Song 1'
+            $results[3].Title | Should -Be 'Song 4'
+        }
+
+        It 'Respects limit across pagination boundaries' {
+            Mock Invoke-YtmApi {
+                if ($ContinuationToken) {
+                    # Continuation response (page 2) - should only take 1 from here
+                    [PSCustomObject]@{
+                        continuationContents = [PSCustomObject]@{
+                            musicShelfContinuation = [PSCustomObject]@{
+                                contents = @(
+                                    (& $script:CreateSongItem 'Song 3' 'vid3'),
+                                    (& $script:CreateSongItem 'Song 4' 'vid4')
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    # Initial response (page 1) with 2 songs
+                    [PSCustomObject]@{
+                        contents = [PSCustomObject]@{
+                            singleColumnBrowseResultsRenderer = [PSCustomObject]@{
+                                tabs = @(
+                                    [PSCustomObject]@{
+                                        tabRenderer = [PSCustomObject]@{
+                                            content = [PSCustomObject]@{
+                                                sectionListRenderer = [PSCustomObject]@{
+                                                    contents = @(
+                                                        [PSCustomObject]@{
+                                                            musicShelfRenderer = [PSCustomObject]@{
+                                                                contents = @(
+                                                                    (& $script:CreateSongItem 'Song 1' 'vid1'),
+                                                                    (& $script:CreateSongItem 'Song 2' 'vid2')
+                                                                )
+                                                                continuations = @(
+                                                                    [PSCustomObject]@{
+                                                                        nextContinuationData = [PSCustomObject]@{
+                                                                            continuation = 'token123'
+                                                                        }
+                                                                    }
+                                                                )
+                                                            }
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            # Limit to 3: 2 from page 1, 1 from page 2
+            $results = @(Get-YtmLikedMusic -Limit 3)
+            $results.Count | Should -Be 3
+        }
+
+        It 'Stops when no continuation token is present' {
+            Mock Invoke-YtmApi {
+                # Response without continuation token
+                [PSCustomObject]@{
+                    contents = [PSCustomObject]@{
+                        singleColumnBrowseResultsRenderer = [PSCustomObject]@{
+                            tabs = @(
+                                [PSCustomObject]@{
+                                    tabRenderer = [PSCustomObject]@{
+                                        content = [PSCustomObject]@{
+                                            sectionListRenderer = [PSCustomObject]@{
+                                                contents = @(
+                                                    [PSCustomObject]@{
+                                                        musicShelfRenderer = [PSCustomObject]@{
+                                                            contents = @(
+                                                                (& $script:CreateSongItem 'Song 1' 'vid1')
+                                                            )
+                                                            # No continuations property
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            $results = @(Get-YtmLikedMusic)
+
+            Should -Invoke Invoke-YtmApi -Times 1
+            $results.Count | Should -Be 1
+        }
+
+        It 'Handles empty continuation response' {
+            Mock Invoke-YtmApi {
+                if ($ContinuationToken) {
+                    # Empty continuation response
+                    [PSCustomObject]@{
+                        continuationContents = [PSCustomObject]@{
+                            musicShelfContinuation = [PSCustomObject]@{
+                                contents = @()
+                            }
+                        }
+                    }
+                } else {
+                    # Initial response with continuation token
+                    [PSCustomObject]@{
+                        contents = [PSCustomObject]@{
+                            singleColumnBrowseResultsRenderer = [PSCustomObject]@{
+                                tabs = @(
+                                    [PSCustomObject]@{
+                                        tabRenderer = [PSCustomObject]@{
+                                            content = [PSCustomObject]@{
+                                                sectionListRenderer = [PSCustomObject]@{
+                                                    contents = @(
+                                                        [PSCustomObject]@{
+                                                            musicShelfRenderer = [PSCustomObject]@{
+                                                                contents = @(
+                                                                    (& $script:CreateSongItem 'Song 1' 'vid1')
+                                                                )
+                                                                continuations = @(
+                                                                    [PSCustomObject]@{
+                                                                        nextContinuationData = [PSCustomObject]@{
+                                                                            continuation = 'token123'
+                                                                        }
+                                                                    }
+                                                                )
+                                                            }
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            $results = @(Get-YtmLikedMusic)
+
+            Should -Invoke Invoke-YtmApi -Times 2
+            $results.Count | Should -Be 1
+        }
+    }
+
     Context 'Empty Response' {
         BeforeEach {
             $testConfiguration = @{
