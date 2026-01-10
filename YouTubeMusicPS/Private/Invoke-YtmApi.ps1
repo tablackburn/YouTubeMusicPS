@@ -46,6 +46,8 @@ function Invoke-YtmApi {
 
     # Constants
     $ytmBaseApi = 'https://music.youtube.com/youtubei/v1/'
+    # This is YouTube Music's public web client API key, extracted from the official web app.
+    # It is safe to expose as it is publicly visible in YouTube Music's JavaScript bundle.
     $ytmParams = '?alt=json&key=AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30'
     $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     $origin = 'https://music.youtube.com'

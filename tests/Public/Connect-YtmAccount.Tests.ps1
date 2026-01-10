@@ -54,6 +54,30 @@ Describe 'Connect-YtmAccount' {
         It 'Throws when SAPISID is not found in cookies' {
             { Connect-YtmAccount -Cookie 'SSID=xyz; SID=123' } | Should -Throw '*Could not find SAPISID*'
         }
+
+        It 'Accepts SAPISID with dots' {
+            Mock Invoke-YtmApi { [PSCustomObject]@{ success = $true } }
+
+            Connect-YtmAccount -Cookie 'SAPISID=abc.123.xyz'
+            $stored = Get-YtmStoredCookies
+            $stored.SapiSid | Should -Be 'abc.123.xyz'
+        }
+
+        It 'Accepts SAPISID with slashes and dashes' {
+            Mock Invoke-YtmApi { [PSCustomObject]@{ success = $true } }
+
+            Connect-YtmAccount -Cookie 'SAPISID=abc/123-xyz_456'
+            $stored = Get-YtmStoredCookies
+            $stored.SapiSid | Should -Be 'abc/123-xyz_456'
+        }
+
+        It 'Throws when SAPISID contains invalid characters' {
+            { Connect-YtmAccount -Cookie 'SAPISID=abc<script>alert(1)</script>' } | Should -Throw '*unexpected characters*'
+        }
+
+        It 'Throws when SAPISID contains spaces' {
+            { Connect-YtmAccount -Cookie 'SAPISID=abc 123' } | Should -Throw '*unexpected characters*'
+        }
     }
 
     Context 'Authentication Testing' {

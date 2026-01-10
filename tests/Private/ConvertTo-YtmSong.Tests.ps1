@@ -213,6 +213,36 @@ Describe 'ConvertTo-YtmSong' {
             $result.Duration | Should -Be '5:15'
             $result.DurationSeconds | Should -Be 315  # 5*60 + 15
         }
+
+        It 'Handles malformed duration gracefully' {
+            $data = [PSCustomObject]@{
+                fixedColumns = @(
+                    [PSCustomObject]@{
+                        musicResponsiveListItemFixedColumnRenderer = [PSCustomObject]@{
+                            text = [PSCustomObject]@{ simpleText = 'invalid:duration' }
+                        }
+                    }
+                )
+            }
+            $result = ConvertTo-YtmSong -InputObject $data
+            $result.Duration | Should -Be 'invalid:duration'
+            $result.DurationSeconds | Should -BeNullOrEmpty
+        }
+
+        It 'Handles non-numeric duration parts gracefully' {
+            $data = [PSCustomObject]@{
+                fixedColumns = @(
+                    [PSCustomObject]@{
+                        musicResponsiveListItemFixedColumnRenderer = [PSCustomObject]@{
+                            text = [PSCustomObject]@{ simpleText = 'ab:cd' }
+                        }
+                    }
+                )
+            }
+            $result = ConvertTo-YtmSong -InputObject $data
+            $result.Duration | Should -Be 'ab:cd'
+            $result.DurationSeconds | Should -BeNullOrEmpty
+        }
     }
 
     Context 'Missing Data Handling' {

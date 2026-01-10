@@ -160,8 +160,11 @@ Connect-YtmAccount -Cookie 'SAPISID=abc123; HSID=xyz789; ...'
 
 ### Storage Location
 
-Credentials are stored in:
-- **Windows**: `%LOCALAPPDATA%\YouTubeMusicPS\config.json`
+Credentials are stored in (first available location is used):
+- **Windows**:
+  1. `%OneDrive%\Documents\YouTubeMusicPS\config.json` (if OneDrive is available, enables cross-machine sync)
+  2. `%USERPROFILE%\Documents\YouTubeMusicPS\config.json`
+  3. `%LOCALAPPDATA%\YouTubeMusicPS\config.json` (fallback)
 - **macOS/Linux**: `~/.config/YouTubeMusicPS/config.json`
 
 ### Security Notes
