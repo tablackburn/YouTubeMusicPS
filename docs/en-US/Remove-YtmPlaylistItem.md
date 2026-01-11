@@ -14,13 +14,13 @@ Removes a song from a YouTube Music playlist.
 
 ### Direct (Default)
 ```
-Remove-YtmPlaylistItem -Name <String> -Title <String> [-Artist <String>] [-ProgressAction <ActionPreference>]
- [-WhatIf] [-Confirm] [<CommonParameters>]
+Remove-YtmPlaylistItem -Name <String> -Title <String> [-Artist <String>] [-Force]
+ [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### Pipeline
 ```
-Remove-YtmPlaylistItem -Song <PSObject> [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
+Remove-YtmPlaylistItem -Song <PSObject> [-Force] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
  [<CommonParameters>]
 ```
 
@@ -127,6 +127,22 @@ Aliases:
 Required: False
 Position: Named
 Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Force
+Skips the interactive prompt to connect if not authenticated.
+Instead, throws an error immediately. Use this for scripting scenarios.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

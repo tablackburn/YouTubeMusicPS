@@ -13,7 +13,7 @@ Retrieves your liked songs from YouTube Music.
 ## SYNTAX
 
 ```
-Get-YtmLikedMusic [[-Limit] <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-YtmLikedMusic [[-Limit] <Int32>] [-Force] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -65,6 +65,22 @@ Aliases:
 Required: False
 Position: 1
 Default value: 0
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Force
+Skips the interactive prompt to connect if not authenticated.
+Instead, throws an error immediately. Use this for scripting scenarios.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
 Accept pipeline input: False
 Accept wildcard characters: False
 ```
