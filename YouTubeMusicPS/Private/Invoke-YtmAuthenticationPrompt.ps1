@@ -101,6 +101,10 @@ function Invoke-YtmConnectionAttempt {
         throw 'Connection was cancelled or failed.'
     }
     catch {
-        throw "Authentication failed: $($_.Exception.Message)"
+        $message = $_.Exception.Message
+        if ($message -and $message.TrimStart().StartsWith('Authentication failed:', [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw $_
+        }
+        throw "Authentication failed: $message"
     }
 }
