@@ -1,3 +1,7 @@
+# Test hook: Set to $true/$false in tests to simulate user response to ShouldContinue prompt
+# When $null (default), uses actual ShouldContinue. When $true/$false, skips prompt.
+$script:MockPromptResponse = $null
+
 function Invoke-YtmAuthenticationPrompt {
     <#
     .SYNOPSIS
@@ -43,25 +47,60 @@ function Invoke-YtmAuthenticationPrompt {
         throw 'Not authenticated. Please run Connect-YtmAccount first.'
     }
 
-    # Prompt the user to connect
-    $title = 'Authentication Required'
-    $message = 'You are not connected to YouTube Music. Would you like to connect now?'
+    # Prompt the user to connect (or use test hook if set)
+    $userAccepted = Get-UserPromptResponse -Cmdlet $Cmdlet
 
-    if ($Cmdlet.ShouldContinue($message, $title)) {
-        try {
-            Connect-YtmAccount
-            # Verify connection succeeded
-            $cookies = Get-YtmStoredCookies
-            if ($cookies) {
-                return $true
-            }
-            throw 'Connection was cancelled or failed.'
-        }
-        catch {
-            throw "Authentication failed: $($_.Exception.Message)"
-        }
+    if ($userAccepted) {
+        return Invoke-YtmConnectionAttempt
     }
 
     # User declined to connect
     throw 'Not authenticated. Please run Connect-YtmAccount first.'
+}
+
+function Get-UserPromptResponse {
+    <#
+    .SYNOPSIS
+        Gets the user's response to the authentication prompt.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Management.Automation.PSCmdlet]$Cmdlet
+    )
+
+    # Test hook: allow tests to override the prompt response
+    if ($null -ne $script:MockPromptResponse) {
+        return $script:MockPromptResponse
+    }
+
+    # Production: use actual ShouldContinue
+    $title = 'Authentication Required'
+    $message = 'You are not connected to YouTube Music. Would you like to connect now?'
+
+    return $Cmdlet.ShouldContinue($message, $title)
+}
+
+function Invoke-YtmConnectionAttempt {
+    <#
+    .SYNOPSIS
+        Attempts to connect to YouTube Music and verifies success.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param()
+
+    try {
+        Connect-YtmAccount
+        # Verify connection succeeded
+        $cookies = Get-YtmStoredCookies
+        if ($cookies) {
+            return $true
+        }
+        throw 'Connection was cancelled or failed.'
+    }
+    catch {
+        throw "Authentication failed: $($_.Exception.Message)"
+    }
 }

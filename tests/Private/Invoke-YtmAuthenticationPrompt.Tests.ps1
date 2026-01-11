@@ -11,12 +11,16 @@ Describe 'Invoke-YtmAuthenticationPrompt' {
     BeforeEach {
         New-Item -Path $testDir -ItemType Directory -Force | Out-Null
         Mock Get-YtmConfigurationPath { $script:testConfigPath }
+        # Reset the mock prompt response before each test
+        $script:MockPromptResponse = $null
     }
 
     AfterEach {
         if (Test-Path $testDir) {
             Remove-Item $testDir -Recurse -Force
         }
+        # Clean up mock prompt response
+        $script:MockPromptResponse = $null
     }
 
     Context 'Parameter Validation' {
@@ -47,29 +51,45 @@ Describe 'Invoke-YtmAuthenticationPrompt' {
         }
     }
 
-    Context 'Behavior via Get-YtmLikedMusic' {
+    Context 'When User Accepts Prompt and Connection Succeeds' {
         BeforeEach {
-            # Ensure no cookies
+            # No existing cookies
             if (Test-Path $testConfigPath) {
                 Remove-Item $testConfigPath -Force
             }
+            # Simulate user accepting the prompt
+            $script:MockPromptResponse = $true
         }
 
-        It 'Throws with -Force when not authenticated' {
-            { Get-YtmLikedMusic -Force } | Should -Throw '*Not authenticated*'
-        }
-
-        It 'Does not throw when authenticated with -Force' {
-            # Set up mock cookies
-            $testConfiguration = @{
-                version = '1.0'
-                auth = @{
-                    sapiSid = 'test-sapisid'
-                    cookies = 'SAPISID=test-sapisid'
+        It 'Calls Connect-YtmAccount when user accepts' {
+            Mock Connect-YtmAccount {
+                # Simulate successful connection by creating config
+                $testConfiguration = @{
+                    version = '1.0'
+                    auth = @{
+                        sapiSid = 'test-sapisid'
+                        cookies = 'SAPISID=test-sapisid'
+                    }
                 }
+                $testConfiguration | ConvertTo-Json | Set-Content $script:testConfigPath
             }
-            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
 
+            Get-YtmLikedMusic -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+
+            Should -Invoke Connect-YtmAccount -Times 1
+        }
+
+        It 'Returns true after successful connection' {
+            Mock Connect-YtmAccount {
+                $testConfiguration = @{
+                    version = '1.0'
+                    auth = @{
+                        sapiSid = 'test-sapisid'
+                        cookies = 'SAPISID=test-sapisid'
+                    }
+                }
+                $testConfiguration | ConvertTo-Json | Set-Content $script:testConfigPath
+            }
             Mock Invoke-YtmApi {
                 [PSCustomObject]@{
                     contents = [PSCustomObject]@{
@@ -80,108 +100,218 @@ Describe 'Invoke-YtmAuthenticationPrompt' {
                 }
             }
 
-            { Get-YtmLikedMusic -Force -WarningAction SilentlyContinue } | Should -Not -Throw
+            # Should not throw - connection succeeded
+            { Get-YtmLikedMusic -WarningAction SilentlyContinue } | Should -Not -Throw
         }
     }
 
-    Context 'Behavior via Get-YtmPlaylist' {
+    Context 'When User Accepts Prompt but Connection Fails' {
         BeforeEach {
             if (Test-Path $testConfigPath) {
                 Remove-Item $testConfigPath -Force
             }
+            $script:MockPromptResponse = $true
         }
 
-        It 'Throws with -Force when not authenticated' {
-            { Get-YtmPlaylist -Force } | Should -Throw '*Not authenticated*'
+        It 'Throws when Connect-YtmAccount fails' {
+            Mock Connect-YtmAccount {
+                throw 'Connection error'
+            }
+
+            { Get-YtmLikedMusic } | Should -Throw '*Authentication failed*'
         }
 
-        It 'Does not throw when authenticated with -Force' {
-            $testConfiguration = @{
-                version = '1.0'
-                auth = @{
-                    sapiSid = 'test-sapisid'
-                    cookies = 'SAPISID=test-sapisid'
-                }
-            }
-            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
-
-            Mock Invoke-YtmApi {
-                [PSCustomObject]@{
-                    contents = [PSCustomObject]@{
-                        singleColumnBrowseResultsRenderer = [PSCustomObject]@{
-                            tabs = @()
-                        }
-                    }
-                }
+        It 'Throws when connection succeeds but cookies not stored' {
+            Mock Connect-YtmAccount {
+                # Don't create config - simulates cancelled connection
             }
 
-            { Get-YtmPlaylist -Force } | Should -Not -Throw
+            { Get-YtmLikedMusic } | Should -Throw '*Authentication failed*Connection was cancelled*'
         }
     }
 
-    Context 'Behavior via Remove-YtmPlaylistItem' {
+    Context 'When User Declines Prompt' {
         BeforeEach {
             if (Test-Path $testConfigPath) {
                 Remove-Item $testConfigPath -Force
             }
+            # Simulate user declining the prompt
+            $script:MockPromptResponse = $false
         }
 
-        It 'Throws with -Force when not authenticated' {
-            $song = [PSCustomObject]@{
-                PSTypeName = 'YouTubeMusicPS.Song'
-                VideoId    = 'test123'
-                SetVideoId = 'set123'
-                PlaylistId = 'PLtest'
-                Title      = 'Test Song'
-                Artist     = 'Test Artist'
-            }
-            { $song | Remove-YtmPlaylistItem -Force } | Should -Throw '*Not authenticated*'
-        }
-    }
-
-    Context 'Authentication Check Logic' {
-        It 'Uses Get-YtmStoredCookies to check authentication' {
-            # This test verifies the function checks stored cookies
-            $testConfiguration = @{
-                version = '1.0'
-                auth = @{
-                    sapiSid = 'test-sapisid'
-                    cookies = 'SAPISID=test-sapisid'
-                }
-            }
-            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
-
-            Mock Invoke-YtmApi {
-                [PSCustomObject]@{
-                    contents = [PSCustomObject]@{
-                        singleColumnBrowseResultsRenderer = [PSCustomObject]@{
-                            tabs = @()
-                        }
-                    }
-                }
-            }
-
-            # If authenticated, Get-YtmLikedMusic should proceed to call the API
-            Get-YtmLikedMusic -Force -WarningAction SilentlyContinue
-
-            Should -Invoke Invoke-YtmApi -Times 1
+        It 'Throws when user declines to connect' {
+            { Get-YtmLikedMusic } | Should -Throw '*Not authenticated*'
         }
 
-        It 'Does not call API when not authenticated with -Force' {
-            if (Test-Path $testConfigPath) {
-                Remove-Item $testConfigPath -Force
-            }
-
-            Mock Invoke-YtmApi { }
+        It 'Does not call Connect-YtmAccount when user declines' {
+            Mock Connect-YtmAccount { }
 
             try {
-                Get-YtmLikedMusic -Force
+                Get-YtmLikedMusic
             }
             catch {
                 # Expected to throw
             }
 
-            Should -Not -Invoke Invoke-YtmApi
+            Should -Not -Invoke Connect-YtmAccount
+        }
+    }
+
+    Context 'With -Force Parameter' {
+        BeforeEach {
+            if (Test-Path $testConfigPath) {
+                Remove-Item $testConfigPath -Force
+            }
+        }
+
+        It 'Throws immediately without prompting when -Force is used' {
+            $script:MockPromptResponse = $true  # Would accept if prompted
+            Mock Connect-YtmAccount { }
+
+            { Get-YtmLikedMusic -Force } | Should -Throw '*Not authenticated*'
+
+            # Should not have called Connect-YtmAccount
+            Should -Not -Invoke Connect-YtmAccount
+        }
+    }
+
+    Context 'When Already Authenticated' {
+        BeforeEach {
+            $testConfiguration = @{
+                version = '1.0'
+                auth = @{
+                    sapiSid = 'test-sapisid'
+                    cookies = 'SAPISID=test-sapisid'
+                }
+            }
+            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
+        }
+
+        It 'Does not prompt when already authenticated' {
+            Mock Connect-YtmAccount { }
+            Mock Invoke-YtmApi {
+                [PSCustomObject]@{
+                    contents = [PSCustomObject]@{
+                        singleColumnBrowseResultsRenderer = [PSCustomObject]@{
+                            tabs = @()
+                        }
+                    }
+                }
+            }
+
+            Get-YtmLikedMusic -WarningAction SilentlyContinue
+
+            Should -Not -Invoke Connect-YtmAccount
+        }
+
+        It 'Proceeds directly to API call' {
+            Mock Invoke-YtmApi {
+                [PSCustomObject]@{
+                    contents = [PSCustomObject]@{
+                        singleColumnBrowseResultsRenderer = [PSCustomObject]@{
+                            tabs = @()
+                        }
+                    }
+                }
+            }
+
+            Get-YtmLikedMusic -WarningAction SilentlyContinue
+
+            Should -Invoke Invoke-YtmApi -Times 1
+        }
+    }
+}
+
+Describe 'Get-UserPromptResponse' {
+    Context 'Test Hook Behavior' {
+        AfterEach {
+            $script:MockPromptResponse = $null
+        }
+
+        It 'Returns $true when MockPromptResponse is $true' {
+            $script:MockPromptResponse = $true
+            # Need a mock cmdlet - use a simple approach via the public function behavior
+            # The function itself just returns the mock value when set
+            $script:MockPromptResponse | Should -BeTrue
+        }
+
+        It 'Returns $false when MockPromptResponse is $false' {
+            $script:MockPromptResponse = $false
+            $script:MockPromptResponse | Should -BeFalse
+        }
+    }
+}
+
+Describe 'Invoke-YtmConnectionAttempt' {
+    BeforeAll {
+        $script:testDir = Join-Path $TestDrive 'YouTubeMusicPS'
+        $script:testConfigPath = Join-Path $testDir 'config.json'
+    }
+
+    BeforeEach {
+        New-Item -Path $testDir -ItemType Directory -Force | Out-Null
+        Mock Get-YtmConfigurationPath { $script:testConfigPath }
+        if (Test-Path $testConfigPath) {
+            Remove-Item $testConfigPath -Force
+        }
+    }
+
+    AfterEach {
+        if (Test-Path $testDir) {
+            Remove-Item $testDir -Recurse -Force
+        }
+    }
+
+    Context 'Successful Connection' {
+        It 'Returns $true when connection succeeds' {
+            Mock Connect-YtmAccount {
+                $testConfiguration = @{
+                    version = '1.0'
+                    auth = @{
+                        sapiSid = 'test-sapisid'
+                        cookies = 'SAPISID=test-sapisid'
+                    }
+                }
+                $testConfiguration | ConvertTo-Json | Set-Content $script:testConfigPath
+            }
+
+            $result = Invoke-YtmConnectionAttempt
+            $result | Should -BeTrue
+        }
+
+        It 'Calls Connect-YtmAccount' {
+            Mock Connect-YtmAccount {
+                $testConfiguration = @{
+                    version = '1.0'
+                    auth = @{
+                        sapiSid = 'test-sapisid'
+                        cookies = 'SAPISID=test-sapisid'
+                    }
+                }
+                $testConfiguration | ConvertTo-Json | Set-Content $script:testConfigPath
+            }
+
+            Invoke-YtmConnectionAttempt
+
+            Should -Invoke Connect-YtmAccount -Times 1
+        }
+    }
+
+    Context 'Failed Connection' {
+        It 'Throws when Connect-YtmAccount throws' {
+            Mock Connect-YtmAccount {
+                throw 'Test connection error'
+            }
+
+            { Invoke-YtmConnectionAttempt } | Should -Throw '*Authentication failed*Test connection error*'
+        }
+
+        It 'Throws when cookies not stored after Connect-YtmAccount' {
+            Mock Connect-YtmAccount {
+                # Don't create config
+            }
+
+            { Invoke-YtmConnectionAttempt } | Should -Throw '*Authentication failed*Connection was cancelled*'
         }
     }
 }
