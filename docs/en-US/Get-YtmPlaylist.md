@@ -14,17 +14,19 @@ Retrieves playlists or playlist contents from YouTube Music.
 
 ### List (Default)
 ```
-Get-YtmPlaylist [-Limit <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-YtmPlaylist [-Limit <Int32>] [-Force] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Get-YtmPlaylist [-Name] <String> [-Limit <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-YtmPlaylist [-Name] <String> [-Limit <Int32>] [-Force] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ### ById
 ```
-Get-YtmPlaylist -Id <String> [-Limit <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-YtmPlaylist -Id <String> [-Limit <Int32>] [-Force] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -115,6 +117,22 @@ Aliases:
 Required: False
 Position: Named
 Default value: 0
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Force
+Skips the interactive prompt to connect if not authenticated.
+Instead, throws an error immediately. Use this for scripting scenarios.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
 Accept pipeline input: False
 Accept wildcard characters: False
 ```
