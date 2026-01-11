@@ -7,22 +7,22 @@ BeforeAll {
 Describe 'YouTubeMusicPS.Format.ps1xml' {
     Context 'Format File Validity' {
         It 'Format file exists' {
-            Test-Path $FormatFilePath | Should -BeTrue
+            Test-Path $script:FormatFilePath | Should -BeTrue
         }
 
         It 'Format file is valid XML' {
-            { [xml](Get-Content $FormatFilePath -Raw) } | Should -Not -Throw
+            { [xml](Get-Content $script:FormatFilePath -Raw) } | Should -Not -Throw
         }
 
         It 'Format file has ViewDefinitions' {
-            $xml = [xml](Get-Content $FormatFilePath -Raw)
+            $xml = [xml](Get-Content $script:FormatFilePath -Raw)
             $xml.Configuration.ViewDefinitions | Should -Not -BeNullOrEmpty
         }
     }
 
     Context 'Song Format View' {
         BeforeAll {
-            $xml = [xml](Get-Content $FormatFilePath -Raw)
+            $xml = [xml](Get-Content $script:FormatFilePath -Raw)
             $script:songView = $xml.Configuration.ViewDefinitions.View |
                 Where-Object { $_.ViewSelectedBy.TypeName -eq 'YouTubeMusicPS.Song' }
         }
@@ -68,7 +68,7 @@ Describe 'YouTubeMusicPS.Format.ps1xml' {
 
     Context 'Playlist Format View' {
         BeforeAll {
-            $xml = [xml](Get-Content $FormatFilePath -Raw)
+            $xml = [xml](Get-Content $script:FormatFilePath -Raw)
             $script:playlistView = $xml.Configuration.ViewDefinitions.View |
                 Where-Object { $_.ViewSelectedBy.TypeName -eq 'YouTubeMusicPS.Playlist' }
         }
@@ -104,7 +104,7 @@ Describe 'YouTubeMusicPS.Format.ps1xml' {
 
     Context 'AuthenticationStatus Format View' {
         BeforeAll {
-            $xml = [xml](Get-Content $FormatFilePath -Raw)
+            $xml = [xml](Get-Content $script:FormatFilePath -Raw)
             $script:authView = $xml.Configuration.ViewDefinitions.View |
                 Where-Object { $_.ViewSelectedBy.TypeName -eq 'YouTubeMusicPS.AuthenticationStatus' }
         }
