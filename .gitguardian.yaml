@@ -1,0 +1,12 @@
+# GitGuardian configuration
+# See: https://docs.gitguardian.com/ggshield-docs/reference/gitguardian-yaml
+
+secret:
+  # YouTube Music's public web client API key
+  # This key is intentionally exposed as it is extracted from YouTube Music's
+  # official JavaScript bundle and is required for web client API requests.
+  # It is publicly visible at https://music.youtube.com and used by other
+  # open-source projects like ytmusicapi.
+  ignored-matches:
+    - name: "YouTube Music public web client API key"
+      match: "AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30"
