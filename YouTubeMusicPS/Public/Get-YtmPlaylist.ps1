@@ -210,6 +210,16 @@ function Get-PlaylistContents {
 
     Write-Verbose "Fetching playlist contents for $PlaylistId..."
 
+    # Validate playlist ID
+    if ([string]::IsNullOrWhiteSpace($PlaylistId)) {
+        throw "PlaylistId cannot be null or empty."
+    }
+
+    # YouTube playlist IDs should only contain alphanumeric, underscore, dash
+    if ($PlaylistId -notmatch '^(VL)?[A-Za-z0-9_\-]+$') {
+        throw "Invalid playlist ID format: $PlaylistId"
+    }
+
     # Playlist browse IDs need 'VL' prefix
     $browseId = if ($PlaylistId.StartsWith('VL')) { $PlaylistId } else { "VL$PlaylistId" }
     # Store the actual playlist ID (without VL prefix) for song objects

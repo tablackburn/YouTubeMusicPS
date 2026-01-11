@@ -56,7 +56,13 @@ function ConvertTo-YtmPlaylist {
             $subtitleText = ($data.subtitle.runs | ForEach-Object { $_.text }) -join ''
             # Parse "X songs" or "X song" pattern
             if ($subtitleText -match '(\d+)\s+songs?') {
-                $trackCount = [int]$Matches[1]
+                try {
+                    $trackCount = [int]$Matches[1]
+                }
+                catch {
+                    Write-Verbose "Could not parse track count from '$subtitleText': $($_.Exception.Message)"
+                    $trackCount = $null
+                }
             }
         }
 

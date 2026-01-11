@@ -44,9 +44,21 @@ function ConvertTo-YtmSong {
         # Extract video ID from playNavigationEndpoint or menu
         $videoId = $null
         if ($data.PSObject.Properties['overlay']) {
-            $playButton = $data.overlay.musicItemThumbnailOverlayRenderer.content.musicPlayButtonRenderer
-            if ($playButton.PSObject.Properties['playNavigationEndpoint']) {
-                $videoId = $playButton.playNavigationEndpoint.watchEndpoint.videoId
+            $overlay = $data.overlay
+            if ($overlay.PSObject.Properties['musicItemThumbnailOverlayRenderer']) {
+                $overlayRenderer = $overlay.musicItemThumbnailOverlayRenderer
+                if ($overlayRenderer.PSObject.Properties['content']) {
+                    $overlayContent = $overlayRenderer.content
+                    if ($overlayContent.PSObject.Properties['musicPlayButtonRenderer']) {
+                        $playButton = $overlayContent.musicPlayButtonRenderer
+                        if ($playButton.PSObject.Properties['playNavigationEndpoint']) {
+                            $playEndpoint = $playButton.playNavigationEndpoint
+                            if ($playEndpoint.PSObject.Properties['watchEndpoint']) {
+                                $videoId = $playEndpoint.watchEndpoint.videoId
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -87,10 +99,17 @@ function ConvertTo-YtmSong {
                         $_.navigationEndpoint.PSObject.Properties['browseEndpoint']
                     } | Select-Object -First 1
                     if ($albumRun) {
-                        $pageType = $albumRun.navigationEndpoint.browseEndpoint.browseEndpointContextSupportedConfigs.browseEndpointContextMusicConfig.pageType
+                        $browseEndpoint = $albumRun.navigationEndpoint.browseEndpoint
+                        $pageType = $null
+                        if ($browseEndpoint.PSObject.Properties['browseEndpointContextSupportedConfigs']) {
+                            $contextConfigs = $browseEndpoint.browseEndpointContextSupportedConfigs
+                            if ($contextConfigs.PSObject.Properties['browseEndpointContextMusicConfig']) {
+                                $pageType = $contextConfigs.browseEndpointContextMusicConfig.pageType
+                            }
+                        }
                         if ($pageType -eq 'MUSIC_PAGE_TYPE_ALBUM') {
                             $album = $albumRun.text
-                            $albumId = $albumRun.navigationEndpoint.browseEndpoint.browseId
+                            $albumId = $browseEndpoint.browseId
                             break
                         }
                     }

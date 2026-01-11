@@ -74,64 +74,8 @@ function Get-YtmLikedMusic {
         throw "Failed to retrieve liked music: $($_.Exception.Message)"
     }
 
-    # Helper function to find the music shelf in the response
-    function Find-MusicShelf {
-        param ($Response)
-
-        $musicShelf = $null
-
-        if ($Response.PSObject.Properties['contents']) {
-            $tabs = $Response.contents.singleColumnBrowseResultsRenderer.tabs
-            if ($tabs) {
-                foreach ($tab in $tabs) {
-                    $tabRenderer = $tab.tabRenderer
-                    if ($tabRenderer.PSObject.Properties['content']) {
-                        $sectionList = $tabRenderer.content.sectionListRenderer
-                        if ($sectionList.PSObject.Properties['contents']) {
-                            foreach ($section in $sectionList.contents) {
-                                if ($section.PSObject.Properties['itemSectionRenderer']) {
-                                    $itemSection = $section.itemSectionRenderer
-                                    if ($itemSection.PSObject.Properties['contents']) {
-                                        foreach ($item in $itemSection.contents) {
-                                            if ($item.PSObject.Properties['musicShelfRenderer']) {
-                                                $musicShelf = $item.musicShelfRenderer
-                                                break
-                                            }
-                                        }
-                                    }
-                                }
-                                elseif ($section.PSObject.Properties['musicShelfRenderer']) {
-                                    $musicShelf = $section.musicShelfRenderer
-                                    break
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return $musicShelf
-    }
-
-    # Helper function to extract continuation token
-    function Get-ContinuationToken {
-        param ($MusicShelf)
-
-        if ($MusicShelf.PSObject.Properties['continuations']) {
-            $continuations = $MusicShelf.continuations
-            if ($continuations -and $continuations.Count -gt 0) {
-                $continuationItem = $continuations[0]
-                if ($continuationItem.PSObject.Properties['nextContinuationData']) {
-                    return $continuationItem.nextContinuationData.continuation
-                }
-            }
-        }
-        return $null
-    }
-
     # Find the music shelf in the initial response
-    $musicShelf = Find-MusicShelf -Response $response
+    $musicShelf = Find-YtmMusicShelf -Response $response
 
     if (-not $musicShelf -or -not $musicShelf.PSObject.Properties['contents']) {
         Write-Warning "No liked songs found or unable to parse response."
@@ -170,7 +114,7 @@ function Get-YtmLikedMusic {
     }
 
     # Get continuation token for pagination
-    $continuationToken = Get-ContinuationToken -MusicShelf $musicShelf
+    $continuationToken = Get-YtmContinuationToken -MusicShelf $musicShelf
 
     # Continue fetching while we have a token and haven't hit the limit
     $pageNumber = 1
