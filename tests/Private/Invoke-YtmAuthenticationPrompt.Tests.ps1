@@ -306,6 +306,24 @@ Describe 'Invoke-YtmConnectionAttempt' {
             { Invoke-YtmConnectionAttempt } | Should -Throw '*Authentication failed*Test connection error*'
         }
 
+        It 'Does not double-wrap Authentication failed errors' {
+            Mock Connect-YtmAccount {
+                throw 'Authentication failed: Could not find SAPISID'
+            }
+
+            # Capture the error and verify it doesn't have double prefix
+            $errorThrown = $null
+            try {
+                Invoke-YtmConnectionAttempt
+            }
+            catch {
+                $errorThrown = $_.Exception.Message
+            }
+
+            $errorThrown | Should -BeLike '*Authentication failed: Could not find SAPISID*'
+            $errorThrown | Should -Not -BeLike '*Authentication failed: Authentication failed:*'
+        }
+
         It 'Throws when cookies not stored after Connect-YtmAccount' {
             Mock Connect-YtmAccount {
                 # Don't create config
