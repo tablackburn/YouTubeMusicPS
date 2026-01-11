@@ -11,10 +11,14 @@ function Get-YtmLikedMusic {
     .PARAMETER Limit
         Maximum number of songs to retrieve. Default is 0 which retrieves all songs.
 
+    .PARAMETER Force
+        Skips the interactive prompt to connect if not authenticated.
+        Instead, throws an error immediately. Use this for scripting scenarios.
+
     .EXAMPLE
         Get-YtmLikedMusic
 
-        Gets all liked songs.
+        Gets all liked songs. Prompts to connect if not authenticated.
 
     .EXAMPLE
         Get-YtmLikedMusic -Limit 50
@@ -51,14 +55,14 @@ function Get-YtmLikedMusic {
     param (
         [Parameter(Mandatory = $false)]
         [ValidateRange(0, [int]::MaxValue)]
-        [int]$Limit = 0
+        [int]$Limit = 0,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Force
     )
 
-    # Check authentication
-    $cookies = Get-YtmStoredCookies
-    if (-not $cookies) {
-        throw 'Not authenticated. Please run Connect-YtmAccount first.'
-    }
+    # Check authentication (prompts to connect if not authenticated, unless -Force)
+    $null = Invoke-YtmAuthenticationPrompt -Cmdlet $PSCmdlet -Force:$Force
 
     Write-Verbose "Fetching liked music from YouTube Music..."
 
@@ -74,11 +78,22 @@ function Get-YtmLikedMusic {
         throw "Failed to retrieve liked music: $($_.Exception.Message)"
     }
 
+    # Check for API-level errors in the response
+    if ($response.PSObject.Properties['error']) {
+        throw "YouTube Music API error: $($response.error.message)"
+    }
+
     # Find the music shelf in the initial response
     $musicShelf = Find-YtmMusicShelf -Response $response
 
-    if (-not $musicShelf -or -not $musicShelf.PSObject.Properties['contents']) {
-        Write-Warning "No liked songs found or unable to parse response."
+    if (-not $musicShelf) {
+        Write-Warning "Unable to parse API response. The YouTube Music API format may have changed."
+        Write-Verbose "Response structure: $($response | ConvertTo-Json -Depth 3 -Compress)"
+        return
+    }
+
+    if (-not $musicShelf.PSObject.Properties['contents'] -or $musicShelf.contents.Count -eq 0) {
+        Write-Information "Your liked songs library is empty." -InformationAction Continue
         return
     }
 

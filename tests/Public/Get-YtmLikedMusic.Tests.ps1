@@ -21,12 +21,19 @@ Describe 'Get-YtmLikedMusic' {
     }
 
     Context 'Authentication Check' {
-        It 'Throws when not authenticated' {
+        It 'Throws when not authenticated with -Force' {
             # Ensure no cookies
             if (Test-Path $testConfigPath) {
                 Remove-Item $testConfigPath -Force
             }
-            { Get-YtmLikedMusic } | Should -Throw '*Not authenticated*'
+            { Get-YtmLikedMusic -Force } | Should -Throw '*Not authenticated*'
+        }
+
+        It 'Has Force parameter' {
+            $command = Get-Command Get-YtmLikedMusic
+            $forceParam = $command.Parameters['Force']
+            $forceParam | Should -Not -BeNullOrEmpty
+            $forceParam.ParameterType | Should -Be ([switch])
         }
     }
 

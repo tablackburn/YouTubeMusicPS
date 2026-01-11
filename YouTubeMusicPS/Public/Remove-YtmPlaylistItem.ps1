@@ -22,6 +22,10 @@ function Remove-YtmPlaylistItem {
     .PARAMETER Artist
         Optional artist name to disambiguate when multiple songs have the same title.
 
+    .PARAMETER Force
+        Skips the interactive prompt to connect if not authenticated.
+        Instead, throws an error immediately. Use this for scripting scenarios.
+
     .EXAMPLE
         Get-YtmPlaylist -Name "Chill Vibes" | Where-Object Title -eq "Bad Song" | Remove-YtmPlaylistItem
 
@@ -78,15 +82,15 @@ function Remove-YtmPlaylistItem {
         [string]$Title,
 
         [Parameter(Mandatory = $false, ParameterSetName = 'Direct')]
-        [string]$Artist
+        [string]$Artist,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Force
     )
 
     begin {
-        # Check authentication
-        $cookies = Get-YtmStoredCookies
-        if (-not $cookies) {
-            throw 'Not authenticated. Please run Connect-YtmAccount first.'
-        }
+        # Check authentication (prompts to connect if not authenticated, unless -Force)
+        $null = Invoke-YtmAuthenticationPrompt -Cmdlet $PSCmdlet -Force:$Force
 
         # For pipeline mode, we'll batch removals per playlist
         $removalsByPlaylist = @{}

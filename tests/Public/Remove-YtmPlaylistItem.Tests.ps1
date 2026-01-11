@@ -20,7 +20,7 @@ Describe 'Remove-YtmPlaylistItem' {
     }
 
     Context 'Authentication Check' {
-        It 'Throws when not authenticated' {
+        It 'Throws when not authenticated with -Force' {
             if (Test-Path $testConfigPath) {
                 Remove-Item $testConfigPath -Force
             }
@@ -32,7 +32,14 @@ Describe 'Remove-YtmPlaylistItem' {
                 Title      = 'Test Song'
                 Artist     = 'Test Artist'
             }
-            { $song | Remove-YtmPlaylistItem } | Should -Throw '*Not authenticated*'
+            { $song | Remove-YtmPlaylistItem -Force } | Should -Throw '*Not authenticated*'
+        }
+
+        It 'Has Force parameter' {
+            $command = Get-Command Remove-YtmPlaylistItem
+            $forceParam = $command.Parameters['Force']
+            $forceParam | Should -Not -BeNullOrEmpty
+            $forceParam.ParameterType | Should -Be ([switch])
         }
     }
 
