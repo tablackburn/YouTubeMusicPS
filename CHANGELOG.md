@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-01-10
+
+### Fixed
+
+- Fix duration parsing to handle malformed input gracefully instead of throwing
+- Fix PowerShell 5.1 compatibility by checking if `$IsWindows` variable exists before using it
+- Add SAPISID cookie format validation to reject malformed values
+- Update README to document actual config storage location priority (OneDrive > Documents > LocalAppData)
+- Fix CI workflow job names to match branch protection required status checks
+
 ## [0.2.0] - 2025-01-01
 
 ### Added
@@ -31,5 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add cross-platform configuration storage
 - Add comprehensive Pester test suite
 
+[0.2.1]: https://github.com/tablackburn/YouTubeMusicPS/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tablackburn/YouTubeMusicPS/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tablackburn/YouTubeMusicPS/tree/v0.1.0
