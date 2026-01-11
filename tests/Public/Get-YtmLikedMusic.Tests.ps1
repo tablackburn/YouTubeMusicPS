@@ -21,12 +21,19 @@ Describe 'Get-YtmLikedMusic' {
     }
 
     Context 'Authentication Check' {
-        It 'Throws when not authenticated' {
+        It 'Throws when not authenticated with -Force' {
             # Ensure no cookies
             if (Test-Path $testConfigPath) {
                 Remove-Item $testConfigPath -Force
             }
-            { Get-YtmLikedMusic } | Should -Throw '*Not authenticated*'
+            { Get-YtmLikedMusic -Force } | Should -Throw '*Not authenticated*'
+        }
+
+        It 'Has Force parameter' {
+            $command = Get-Command Get-YtmLikedMusic
+            $forceParam = $command.Parameters['Force']
+            $forceParam | Should -Not -BeNullOrEmpty
+            $forceParam.ParameterType | Should -Be ([switch])
         }
     }
 
@@ -502,6 +509,44 @@ Describe 'Get-YtmLikedMusic' {
 
             Should -Invoke Invoke-YtmApi -Times 2
             $results.Count | Should -Be 1
+        }
+    }
+
+    Context 'API Error Handling' {
+        BeforeEach {
+            $testConfiguration = @{
+                version = '1.0'
+                auth = @{
+                    sapiSid = 'test-sapisid'
+                    cookies = 'SAPISID=test-sapisid'
+                }
+            }
+            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
+        }
+
+        It 'Throws when API returns error object' {
+            Mock Invoke-YtmApi {
+                [PSCustomObject]@{
+                    error = [PSCustomObject]@{
+                        message = 'Invalid request'
+                        code = 400
+                    }
+                }
+            }
+
+            { Get-YtmLikedMusic } | Should -Throw '*YouTube Music API error*Invalid request*'
+        }
+
+        It 'Warns when API response format is unexpected' {
+            Mock Invoke-YtmApi {
+                # Return response without expected structure
+                [PSCustomObject]@{
+                    unexpectedProperty = 'value'
+                }
+            }
+
+            $results = Get-YtmLikedMusic -WarningAction SilentlyContinue -WarningVariable warnings
+            $results | Should -BeNullOrEmpty
         }
     }
 

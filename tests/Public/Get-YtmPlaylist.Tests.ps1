@@ -20,11 +20,18 @@ Describe 'Get-YtmPlaylist' {
     }
 
     Context 'Authentication Check' {
-        It 'Throws when not authenticated' {
+        It 'Throws when not authenticated with -Force' {
             if (Test-Path $testConfigPath) {
                 Remove-Item $testConfigPath -Force
             }
-            { Get-YtmPlaylist } | Should -Throw '*Not authenticated*'
+            { Get-YtmPlaylist -Force } | Should -Throw '*Not authenticated*'
+        }
+
+        It 'Has Force parameter' {
+            $command = Get-Command Get-YtmPlaylist
+            $forceParam = $command.Parameters['Force']
+            $forceParam | Should -Not -BeNullOrEmpty
+            $forceParam.ParameterType | Should -Be ([switch])
         }
     }
 
@@ -229,6 +236,33 @@ Describe 'Get-YtmPlaylist' {
 
         It 'Validates Limit is non-negative' {
             { Get-YtmPlaylist -Limit -1 } | Should -Throw
+        }
+    }
+
+    Context 'API Response Handling' {
+        BeforeEach {
+            $testConfiguration = @{
+                version = '1.0'
+                auth    = @{
+                    sapiSid = 'test-sapisid'
+                    cookies = 'SAPISID=test-sapisid'
+                }
+            }
+            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
+        }
+
+        It 'Warns when playlist contents API response format is unexpected' {
+            Mock Invoke-YtmApi {
+                # Return response without expected musicShelf structure
+                [PSCustomObject]@{
+                    contents = [PSCustomObject]@{
+                        unexpectedProperty = 'value'
+                    }
+                }
+            }
+
+            $results = Get-YtmPlaylist -Id 'PLtest123' -WarningAction SilentlyContinue
+            $results | Should -BeNullOrEmpty
         }
     }
 

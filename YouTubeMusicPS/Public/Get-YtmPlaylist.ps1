@@ -19,10 +19,14 @@ function Get-YtmPlaylist {
     .PARAMETER Limit
         Maximum number of items to retrieve. Default is 0 which retrieves all items.
 
+    .PARAMETER Force
+        Skips the interactive prompt to connect if not authenticated.
+        Instead, throws an error immediately. Use this for scripting scenarios.
+
     .EXAMPLE
         Get-YtmPlaylist
 
-        Lists all playlists in your library.
+        Lists all playlists in your library. Prompts to connect if not authenticated.
 
     .EXAMPLE
         Get-YtmPlaylist -Name "Chill Vibes"
@@ -80,14 +84,14 @@ function Get-YtmPlaylist {
 
         [Parameter(Mandatory = $false)]
         [ValidateRange(0, [int]::MaxValue)]
-        [int]$Limit = 0
+        [int]$Limit = 0,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Force
     )
 
-    # Check authentication
-    $cookies = Get-YtmStoredCookies
-    if (-not $cookies) {
-        throw 'Not authenticated. Please run Connect-YtmAccount first.'
-    }
+    # Check authentication (prompts to connect if not authenticated, unless -Force)
+    $null = Invoke-YtmAuthenticationPrompt -Cmdlet $PSCmdlet -Force:$Force
 
     # Determine which mode we're in
     if ($PSCmdlet.ParameterSetName -eq 'List') {
@@ -179,7 +183,7 @@ function Get-LibraryPlaylists {
     }
 
     if (-not $items) {
-        Write-Warning "No playlists found or unable to parse response."
+        Write-Information "No playlists found in your library." -InformationAction Continue
         return
     }
 
@@ -263,8 +267,13 @@ function Get-PlaylistContents {
         }
     }
 
-    if (-not $musicShelf -or -not $musicShelf.PSObject.Properties['contents']) {
-        Write-Warning "Playlist is empty or unable to parse response."
+    if (-not $musicShelf) {
+        Write-Warning "Unable to parse API response. The YouTube Music API format may have changed."
+        return
+    }
+
+    if (-not $musicShelf.PSObject.Properties['contents'] -or $musicShelf.contents.Count -eq 0) {
+        Write-Information "This playlist is empty." -InformationAction Continue
         return
     }
 
