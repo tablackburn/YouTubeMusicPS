@@ -1,0 +1,38 @@
+name: Publish to PowerShell Gallery
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish Module
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Publish to PowerShell Gallery
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          $modulePath = Join-Path $env:GITHUB_WORKSPACE 'YouTubeMusicPS'
+
+          # Verify module manifest
+          $manifest = Test-ModuleManifest -Path (Join-Path $modulePath 'YouTubeMusicPS.psd1')
+          Write-Host "Publishing $($manifest.Name) version $($manifest.Version)"
+
+          # Publish to PowerShell Gallery
+          $publishParams = @{
+              Path        = $modulePath
+              NuGetApiKey = $env:PSGALLERY_API_KEY
+              ErrorAction = 'Stop'
+              Verbose     = $true
+          }
+          Publish-Module @publishParams
+
+          Write-Host "Successfully published $($manifest.Name) version $($manifest.Version) to PowerShell Gallery"
