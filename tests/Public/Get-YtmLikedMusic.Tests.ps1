@@ -512,6 +512,44 @@ Describe 'Get-YtmLikedMusic' {
         }
     }
 
+    Context 'API Error Handling' {
+        BeforeEach {
+            $testConfiguration = @{
+                version = '1.0'
+                auth = @{
+                    sapiSid = 'test-sapisid'
+                    cookies = 'SAPISID=test-sapisid'
+                }
+            }
+            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
+        }
+
+        It 'Throws when API returns error object' {
+            Mock Invoke-YtmApi {
+                [PSCustomObject]@{
+                    error = [PSCustomObject]@{
+                        message = 'Invalid request'
+                        code = 400
+                    }
+                }
+            }
+
+            { Get-YtmLikedMusic } | Should -Throw '*YouTube Music API error*Invalid request*'
+        }
+
+        It 'Warns when API response format is unexpected' {
+            Mock Invoke-YtmApi {
+                # Return response without expected structure
+                [PSCustomObject]@{
+                    unexpectedProperty = 'value'
+                }
+            }
+
+            $results = Get-YtmLikedMusic -WarningAction SilentlyContinue -WarningVariable warnings
+            $results | Should -BeNullOrEmpty
+        }
+    }
+
     Context 'Empty Response' {
         BeforeEach {
             $testConfiguration = @{

@@ -72,7 +72,7 @@ Describe 'Test-YtmAuthentication' {
             $result.Message | Should -Match 'Connected'
         }
 
-        It 'Returns HasStoredCredentials = $true but IsAuthenticated = $false when API fails' {
+        It 'Returns expired message when API fails with 401/403/expired error' {
             Mock Invoke-YtmApi {
                 throw 'Authentication failed. Your cookies may have expired.'
             }
@@ -81,7 +81,19 @@ Describe 'Test-YtmAuthentication' {
 
             $result.IsAuthenticated | Should -BeFalse
             $result.HasStoredCredentials | Should -BeTrue
-            $result.Message | Should -Match 'expired|failed'
+            $result.Message | Should -Match 'Credentials have expired'
+        }
+
+        It 'Returns generic error message when API fails with other errors' {
+            Mock Invoke-YtmApi {
+                throw 'Network connection timeout'
+            }
+
+            $result = Test-YtmAuthentication
+
+            $result.IsAuthenticated | Should -BeFalse
+            $result.HasStoredCredentials | Should -BeTrue
+            $result.Message | Should -Match 'Authentication test failed.*Network connection timeout'
         }
 
         It 'Makes API call to verify credentials' {

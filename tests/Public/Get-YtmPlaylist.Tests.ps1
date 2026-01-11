@@ -239,6 +239,33 @@ Describe 'Get-YtmPlaylist' {
         }
     }
 
+    Context 'API Response Handling' {
+        BeforeEach {
+            $testConfiguration = @{
+                version = '1.0'
+                auth    = @{
+                    sapiSid = 'test-sapisid'
+                    cookies = 'SAPISID=test-sapisid'
+                }
+            }
+            $testConfiguration | ConvertTo-Json | Set-Content $testConfigPath
+        }
+
+        It 'Warns when playlist contents API response format is unexpected' {
+            Mock Invoke-YtmApi {
+                # Return response without expected musicShelf structure
+                [PSCustomObject]@{
+                    contents = [PSCustomObject]@{
+                        unexpectedProperty = 'value'
+                    }
+                }
+            }
+
+            $results = Get-YtmPlaylist -Id 'PLtest123' -WarningAction SilentlyContinue
+            $results | Should -BeNullOrEmpty
+        }
+    }
+
     Context 'Playlist Contents Pagination' {
         BeforeEach {
             $testConfiguration = @{
