@@ -16,3 +16,6 @@ local.secrets.json
 
 # Claude Code local settings
 .claude/
+
+# Claude Code temporary files
+tmpclaude-*
