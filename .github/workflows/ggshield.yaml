@@ -8,12 +8,20 @@ jobs:
   scanning:
     name: GitGuardian Scan
     runs-on: ubuntu-latest
-    # Skip for Dependabot PRs - they don't have access to secrets and only update dependencies
+    # Skip Dependabot PRs (no secret access, only updates dependencies). The
+    # secret-presence check is enforced per-step via the `GGSHIELD_ENABLED`
+    # boolean (the `secrets` context isn't available in `if:` expressions, so
+    # we surface it as a job-level env value). Only the action step receives
+    # the actual secret, scoped via its own step-level `env`.
     if: github.actor != 'dependabot[bot]'
+    env:
+      GGSHIELD_ENABLED: ${{ secrets.GITGUARDIAN_API_KEY != '' }}
     steps:
       - uses: actions/checkout@v6
+        if: env.GGSHIELD_ENABLED == 'true'
         with:
           fetch-depth: 0
       - uses: GitGuardian/ggshield-action@v1
+        if: env.GGSHIELD_ENABLED == 'true'
         env:
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
