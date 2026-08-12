@@ -102,18 +102,26 @@ $PSBPublishDependency = @('Test', 'UpdateReleaseNotes')
 
 # Custom Pester task, used instead of PowerShellBuild's built-in 'Pester' task.
 #
-# PowerShellBuild's Test-PSBuildPester runs `Import-Module Pester -MinimumVersion 5.0.0`,
-# which resolves to the *highest* installed version. PSDepend has already imported the
-# version pinned in build.depend.psd1, so as soon as the runner image ships anything
-# newer than the pin, the two collide:
+# Two separate reasons it exists.
 #
-#   An incompatible version of the Pester.dll assembly is already loaded.
+# 1. Version agreement. PowerShellBuild's Test-PSBuildPester runs
+#    `Import-Module Pester -MinimumVersion 5.0.0`, which resolves to the *highest*
+#    installed version. Pester 6 also re-resolves Describe by autoloading during
+#    its per-file discovery, and autoload likewise picks the highest installed
+#    version -- so an exact pin is never actually honoured. Whenever the runner
+#    image ships something newer than the pin, the two collide:
 #
-# Bumping the pin only helps until the next image refresh -- Pester 6.0.1 arrived
-# 2026-07-18 and 6.1.0 on 2026-08-11, breaking CI both times with no commit to blame.
-# Importing the pinned version explicitly and calling Invoke-Pester directly removes
-# the dependency on whatever the image happens to ship, so the pin is authoritative
-# and CI only changes when we change it.
+#      An incompatible version of the Pester.dll assembly is already loaded.
+#
+#    Pester 6.0.1 arrived 2026-07-18 and 6.1.0 on 2026-08-11, breaking CI both
+#    times with no commit to blame. build.depend.psd1 therefore uses
+#    Version = 'latest' and this task imports the highest installed version, so
+#    PSDepend, this task and Pester's autoload all agree and cannot collide.
+#    Do not narrow either back to an exact version without changing the other.
+#
+# 2. Failed containers. PowerShellBuild's gate throws only on FailedCount, which
+#    cannot see a test file that died during discovery -- it generates no tests
+#    at all, so zero failures reads as success. See the gate below.
 $unitTestPreReqs = {
     $result = $true
     if (-not $PSBPreference.Test.Enabled) {
@@ -129,7 +137,7 @@ $unitTestPreReqs = {
 
 # Depends on 'Build' because $PSBPreference.Build.ModuleOutDir is only populated once
 # PowerShellBuild's Build task has run and staged the module.
-Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Description 'Execute Pester tests against the pinned Pester version' {
+Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Description 'Execute Pester tests, failing on failed containers as well as failed tests' {
     # build.depend.psd1 is the single source of truth for the Pester version.
     $dependencyFile = Join-Path -Path $PSScriptRoot -ChildPath 'build.depend.psd1'
     $pesterVersion = (Import-PowerShellDataFile -Path $dependencyFile).Pester.Version
