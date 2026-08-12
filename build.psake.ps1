@@ -173,7 +173,13 @@ Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Descripti
             # Pester 6 defaults CoveragePercentTarget to 75; this project sets the
             # threshold to 0 and enforces coverage via Codecov instead. Carry the
             # configured value across or the default silently reintroduces a gate.
-            $configuration.CodeCoverage.CoveragePercentTarget = $PSBPreference.Test.CodeCoverage.Threshold
+            #
+            # The two use different units: PowerShellBuild's Threshold is a fraction
+            # ("Threshold required to pass code coverage test (.90 = 90%)"), while
+            # Pester's CoveragePercentTarget is a percentage. Assigning one to the
+            # other unconverted is a no-op at 0, but would turn a later 0.90 into
+            # 0.9% and quietly disable the gate.
+            $configuration.CodeCoverage.CoveragePercentTarget = [double]$PSBPreference.Test.CodeCoverage.Threshold * 100
             if ($PSBPreference.Test.CodeCoverage.Files.Count -gt 0) {
                 $configuration.CodeCoverage.Path = $PSBPreference.Test.CodeCoverage.Files
             }
