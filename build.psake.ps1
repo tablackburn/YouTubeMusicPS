@@ -170,6 +170,10 @@ Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Descripti
 
         if ($PSBPreference.Test.CodeCoverage.Enabled) {
             $configuration.CodeCoverage.Enabled = $true
+            # Pester 6 defaults CoveragePercentTarget to 75; this project sets the
+            # threshold to 0 and enforces coverage via Codecov instead. Carry the
+            # configured value across or the default silently reintroduces a gate.
+            $configuration.CodeCoverage.CoveragePercentTarget = $PSBPreference.Test.CodeCoverage.Threshold
             if ($PSBPreference.Test.CodeCoverage.Files.Count -gt 0) {
                 $configuration.CodeCoverage.Path = $PSBPreference.Test.CodeCoverage.Files
             }
