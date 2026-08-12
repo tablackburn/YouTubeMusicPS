@@ -41,6 +41,15 @@ jobs:
             $deps = Get-Dependency -Path 'build.depend.psd1'
             foreach ($dep in $deps) {
               if ($dep.DependencyName -and $dep.Version) {
+                # Pester is deliberately excluded and left to PSDepend alone. This action
+                # installs into the AllUsers module path, while build.depend.psd1 sets
+                # Target = 'CurrentUser'. Every other dependency is a script module and
+                # tolerates existing in both paths, but Pester ships a binary Pester.dll:
+                # two copies of the same assembly version in different paths makes the
+                # second import fail with "Assembly with same name is already loaded".
+                # Harmless while the pin was 5.7.1 and the runner image shipped a
+                # different version; fatal once the pin matches the image's 6.0.1.
+                if ($dep.DependencyName -eq 'Pester') { continue }
                 $modules += "$($dep.DependencyName):$($dep.Version)"
               }
             }
@@ -97,6 +106,15 @@ jobs:
             $deps = Get-Dependency -Path 'build.depend.psd1'
             foreach ($dep in $deps) {
               if ($dep.DependencyName -and $dep.Version) {
+                # Pester is deliberately excluded and left to PSDepend alone. This action
+                # installs into the AllUsers module path, while build.depend.psd1 sets
+                # Target = 'CurrentUser'. Every other dependency is a script module and
+                # tolerates existing in both paths, but Pester ships a binary Pester.dll:
+                # two copies of the same assembly version in different paths makes the
+                # second import fail with "Assembly with same name is already loaded".
+                # Harmless while the pin was 5.7.1 and the runner image shipped a
+                # different version; fatal once the pin matches the image's 6.0.1.
+                if ($dep.DependencyName -eq 'Pester') { continue }
                 $modules += "$($dep.DependencyName):$($dep.Version)"
               }
             }
