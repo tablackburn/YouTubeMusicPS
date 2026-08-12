@@ -100,5 +100,127 @@ Task -Name 'UpdateReleaseNotes' -Depends 'Build' -Description 'Set built manifes
 # defaults to depending only on 'Test').
 $PSBPublishDependency = @('Test', 'UpdateReleaseNotes')
 
-# Note: -Depends replaces PowerShellBuild's default dependencies, so we must include Pester and Analyze explicitly
-Task -Name 'Test' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3' -Depends 'Init_Integration', 'Pester', 'Analyze'
+# Custom Pester task, used instead of PowerShellBuild's built-in 'Pester' task.
+#
+# Two separate reasons it exists.
+#
+# 1. Version agreement. PowerShellBuild's Test-PSBuildPester runs
+#    `Import-Module Pester -MinimumVersion 5.0.0`, which resolves to the *highest*
+#    installed version. Pester 6 also re-resolves Describe by autoloading during
+#    its per-file discovery, and autoload likewise picks the highest installed
+#    version -- so an exact pin is never actually honoured. Whenever the runner
+#    image ships something newer than the pin, the two collide:
+#
+#      An incompatible version of the Pester.dll assembly is already loaded.
+#
+#    Pester 6.0.1 arrived 2026-07-18 and 6.1.0 on 2026-08-11, breaking CI both
+#    times with no commit to blame. build.depend.psd1 therefore uses
+#    Version = 'latest' and this task imports the highest installed version, so
+#    PSDepend, this task and Pester's autoload all agree and cannot collide.
+#    Do not narrow either back to an exact version without changing the other.
+#
+# 2. Failed containers. PowerShellBuild's gate throws only on FailedCount, which
+#    cannot see a test file that died during discovery -- it generates no tests
+#    at all, so zero failures reads as success. See the gate below.
+$unitTestPreReqs = {
+    $result = $true
+    if (-not $PSBPreference.Test.Enabled) {
+        Write-Warning 'Pester testing is not enabled.'
+        $result = $false
+    }
+    if (-not (Test-Path -Path $PSBPreference.Test.RootDir)) {
+        Write-Warning "Test directory [$($PSBPreference.Test.RootDir)] not found"
+        $result = $false
+    }
+    return $result
+}
+
+# Depends on 'Build' because $PSBPreference.Build.ModuleOutDir is only populated once
+# PowerShellBuild's Build task has run and staged the module.
+Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Description 'Execute Pester tests, failing on failed containers as well as failed tests' {
+    # build.depend.psd1 is the single source of truth for the Pester version.
+    $dependencyFile = Join-Path -Path $PSScriptRoot -ChildPath 'build.depend.psd1'
+    $pesterVersion = (Import-PowerShellDataFile -Path $dependencyFile).Pester.Version
+
+    if ($pesterVersion -and $pesterVersion -ne 'latest') {
+        Import-Module -Name 'Pester' -RequiredVersion $pesterVersion -Force -ErrorAction 'Stop'
+    }
+    else {
+        # With 'latest', import the newest installed version. That is also what Pester's
+        # own autoloading resolves to when it re-resolves Describe during per-file
+        # discovery -- keeping the two in agreement is precisely what avoids the
+        # assembly collision, so do not narrow this to a specific version.
+        $newestPester = Get-Module -Name 'Pester' -ListAvailable |
+            Sort-Object -Property 'Version' -Descending |
+            Select-Object -First 1
+        if (-not $newestPester) {
+            throw 'Pester is not installed.'
+        }
+        Import-Module -Name $newestPester -Force -ErrorAction 'Stop'
+    }
+    Write-Verbose "Using Pester $((Get-Module -Name 'Pester').Version)" -Verbose
+
+    # Remove any previously imported project module and import from the output dir
+    $moduleManifest = Join-Path -Path $PSBPreference.Build.ModuleOutDir -ChildPath "$($PSBPreference.General.ModuleName).psd1"
+    Get-Module -Name $PSBPreference.General.ModuleName | Remove-Module -Force -ErrorAction 'SilentlyContinue'
+    Import-Module -Name $moduleManifest -Force
+
+    Push-Location -LiteralPath $PSBPreference.Test.RootDir
+
+    try {
+        $configuration = [PesterConfiguration]::Default
+        $configuration.Output.Verbosity = 'Detailed'
+        $configuration.Run.PassThru = $true
+        $configuration.Run.Path = $PSBPreference.Test.RootDir
+        $configuration.TestResult.Enabled = -not [string]::IsNullOrEmpty($PSBPreference.Test.OutputFile)
+        $configuration.TestResult.OutputPath = $PSBPreference.Test.OutputFile
+        $configuration.TestResult.OutputFormat = $PSBPreference.Test.OutputFormat
+
+        if ($PSBPreference.Test.CodeCoverage.Enabled) {
+            $configuration.CodeCoverage.Enabled = $true
+            # Pester 6 defaults CoveragePercentTarget to 75; this project sets the
+            # threshold to 0 and enforces coverage via Codecov instead. Carry the
+            # configured value across or the default silently reintroduces a gate.
+            #
+            # The two use different units: PowerShellBuild's Threshold is a fraction
+            # ("Threshold required to pass code coverage test (.90 = 90%)"), while
+            # Pester's CoveragePercentTarget is a percentage. Assigning one to the
+            # other unconverted is a no-op at 0, but would turn a later 0.90 into
+            # 0.9% and quietly disable the gate.
+            $configuration.CodeCoverage.CoveragePercentTarget = [double]$PSBPreference.Test.CodeCoverage.Threshold * 100
+            if ($PSBPreference.Test.CodeCoverage.Files.Count -gt 0) {
+                $configuration.CodeCoverage.Path = $PSBPreference.Test.CodeCoverage.Files
+            }
+            $configuration.CodeCoverage.OutputPath = $PSBPreference.Test.CodeCoverage.OutputFile
+            $configuration.CodeCoverage.OutputFormat = $PSBPreference.Test.CodeCoverage.OutputFileFormat
+        }
+
+        $testResult = Invoke-Pester -Configuration $configuration
+
+        # FailedCount alone is not enough. When a file fails during discovery -- for
+        # example an empty -ForEach under Pester 6 -- Pester fails the whole container
+        # and it generates no tests at all: zero passed, zero failed. Gating only on
+        # FailedCount reports success while that file never ran, which is how ~777
+        # tests sat silently disabled in PlexAutomationToolkit.
+        # Use FailedContainersCount, not `Containers | Where-Object { -not $_.Passed }`.
+        # A container that dies during discovery still reports Passed = $true on the
+        # container object, so filtering on it silently matches nothing -- reproducing
+        # the exact bug this check exists to catch. FailedContainersCount is the
+        # property Pester actually maintains.
+        if ($testResult.FailedContainersCount -gt 0) {
+            $testResult.FailedContainers | ForEach-Object { Write-Warning "Container failed: $($_.Item)" }
+            throw "$($testResult.FailedContainersCount) test file(s) failed to run. See 'Container failed' above."
+        }
+        if ($testResult.FailedCount -gt 0) {
+            throw 'One or more Pester tests failed'
+        }
+    }
+    finally {
+        Pop-Location
+        Remove-Module -Name $PSBPreference.General.ModuleName -ErrorAction 'SilentlyContinue'
+    }
+}
+
+# Note: -Depends replaces PowerShellBuild's default dependencies. 'UnitTest' above stands in
+# for PowerShellBuild's 'Pester' task; 'Analyze' is still PowerShellBuild's.
+Task -Name 'Test' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3' -Depends 'Init_Integration', 'UnitTest', 'Analyze'
