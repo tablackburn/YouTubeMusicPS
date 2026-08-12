@@ -133,10 +133,23 @@ Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Descripti
     # build.depend.psd1 is the single source of truth for the Pester version.
     $dependencyFile = Join-Path -Path $PSScriptRoot -ChildPath 'build.depend.psd1'
     $pesterVersion = (Import-PowerShellDataFile -Path $dependencyFile).Pester.Version
-    if (-not $pesterVersion) {
-        throw "Could not determine the pinned Pester version from '$dependencyFile'."
+
+    if ($pesterVersion -and $pesterVersion -ne 'latest') {
+        Import-Module -Name 'Pester' -RequiredVersion $pesterVersion -Force -ErrorAction 'Stop'
     }
-    Import-Module -Name 'Pester' -RequiredVersion $pesterVersion -Force -ErrorAction 'Stop'
+    else {
+        # With 'latest', import the newest installed version. That is also what Pester's
+        # own autoloading resolves to when it re-resolves Describe during per-file
+        # discovery -- keeping the two in agreement is precisely what avoids the
+        # assembly collision, so do not narrow this to a specific version.
+        $newestPester = Get-Module -Name 'Pester' -ListAvailable |
+            Sort-Object -Property 'Version' -Descending |
+            Select-Object -First 1
+        if (-not $newestPester) {
+            throw 'Pester is not installed.'
+        }
+        Import-Module -Name $newestPester -Force -ErrorAction 'Stop'
+    }
     Write-Verbose "Using Pester $((Get-Module -Name 'Pester').Version)" -Verbose
 
     # Remove any previously imported project module and import from the output dir
