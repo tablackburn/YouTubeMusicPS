@@ -160,7 +160,18 @@ Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Descripti
         if (-not $newestPester) {
             throw 'Pester is not installed.'
         }
-        Import-Module -Name $newestPester -Force -ErrorAction 'Stop'
+
+        # Import by path, not by -Name $newestPester. A PSModuleInfo stringifies to
+        # its Name, so -Name would import 'Pester' by name and resolve the version
+        # itself -- and if an incompatible Pester is already loaded that re-raises
+        # the very collision this task exists to prevent:
+        #
+        #   An incompatible version of the Pester.dll assembly is already loaded.
+        #
+        # Verified against 5.7.1 preloaded: -Name left the session on 5.7.1.
+        # Unload first so the selected version is the only one in play.
+        Get-Module -Name 'Pester' | Remove-Module -Force -ErrorAction 'SilentlyContinue'
+        Import-Module -Name $newestPester.Path -Force -ErrorAction 'Stop'
     }
     Write-Verbose "Using Pester $((Get-Module -Name 'Pester').Version)" -Verbose
 

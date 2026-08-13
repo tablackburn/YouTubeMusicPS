@@ -14,7 +14,7 @@ jobs:
     name: PSScriptAnalyzer Lint
     runs-on: ubuntu-latest
     # Guard against a hung step burning the 6-hour default. Lint normally
-    # finishes in well under a minute, cold cache included.
+    # finishes in well under a minute, even on a cold run.
     timeout-minutes: 10
     steps:
       - name: Checkout
