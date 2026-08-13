@@ -256,12 +256,21 @@ Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Descripti
         #
         # Test.Enabled is the deliberate opt-out and is handled in the PreCondition;
         # reaching here having run nothing is a fault either way.
-        # Cast before subtracting: when nothing is discovered at all these counts come
-        # back null, and null arithmetic would otherwise leave the message blank.
-        $discoveredCount = [int]$testResult.TotalCount
-        $notRunCount = [int]$testResult.NotRunCount
-        if (($discoveredCount - $notRunCount) -le 0) {
-            throw "Pester executed no tests under [$($PSBPreference.Test.RootDir)] (discovered $discoveredCount, not run $notRunCount). Refusing to report success without running tests."
+        # Count tests that actually produced a result. Measured against Pester 6.1.0,
+        # three ways to reach "nothing ran" that every failure count reads as success:
+        #
+        #   empty test directory     -> Total 0,   Passed 0, Failed 0, Skipped 0, NotRun 0
+        #   filter matching no test  -> Total 120, Passed 0, Failed 0, Skipped 0, NotRun 120
+        #   every test -Skip         -> Total 3,   Passed 0, Failed 0, Skipped 3, NotRun 0
+        #
+        # TotalCount minus NotRunCount misses the third, and so does filtering on the
+        # per-test .Executed property -- skipped tests report Executed = $true. Only
+        # passed-plus-failed distinguishes a suite that ran from one that did not.
+        # Casts are deliberate: with nothing discovered these come back null.
+        $ranCount = [int]$testResult.PassedCount + [int]$testResult.FailedCount
+        if ($ranCount -le 0) {
+            $counts = "discovered $([int]$testResult.TotalCount), skipped $([int]$testResult.SkippedCount), not run $([int]$testResult.NotRunCount)"
+            throw "Pester ran no tests under [$($PSBPreference.Test.RootDir)] ($counts). Refusing to report success without running tests."
         }
     }
     finally {
