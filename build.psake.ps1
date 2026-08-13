@@ -242,6 +242,27 @@ Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Descripti
         if ($testResult.FailedCount -gt 0) {
             throw 'One or more Pester tests failed'
         }
+
+        # A run that executed nothing is not a passing run. Every gate above counts
+        # failures, and a run with no executed tests produces zero of all of them.
+        #
+        # Two distinct ways to get there, and TotalCount alone only catches the first:
+        #   1. Nothing discovered -- a bad Run.Path, or a tests directory that stopped
+        #      matching *.Tests.ps1. TotalCount is 0.
+        #   2. Everything discovered but nothing run -- an over-eager filter. Measured
+        #      against Pester 6.1.0 with a filter matching no test name:
+        #        Passed 0 | Failed 0 | Skipped 0 | NotRun 120 | TotalCount 120
+        #      TotalCount is non-zero, every failure count is 0, and the build passed.
+        #
+        # Test.Enabled is the deliberate opt-out and is handled in the PreCondition;
+        # reaching here having run nothing is a fault either way.
+        # Cast before subtracting: when nothing is discovered at all these counts come
+        # back null, and null arithmetic would otherwise leave the message blank.
+        $discoveredCount = [int]$testResult.TotalCount
+        $notRunCount = [int]$testResult.NotRunCount
+        if (($discoveredCount - $notRunCount) -le 0) {
+            throw "Pester executed no tests under [$($PSBPreference.Test.RootDir)] (discovered $discoveredCount, not run $notRunCount). Refusing to report success without running tests."
+        }
     }
     finally {
         Pop-Location
