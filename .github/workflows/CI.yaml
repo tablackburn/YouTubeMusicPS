@@ -14,24 +14,13 @@ jobs:
     name: PSScriptAnalyzer Lint
     runs-on: ubuntu-latest
     # Guard against a hung step burning the 6-hour default. Lint normally
-    # finishes in well under a minute, cold cache included.
+    # finishes in well under a minute, even on a cold run.
     timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      # Cache only the CurrentUser module paths -- the same Target build.depend.psd1
-      # installs to. Keyed on the dependency file so a version bump busts the cache.
-      - name: Cache PowerShell modules
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/Documents/PowerShell/Modules
-            ~/.local/share/powershell/Modules
-          key: ${{ runner.os }}-psmodules-lint-${{ hashFiles('build.depend.psd1') }}
-          restore-keys: |
-            ${{ runner.os }}-psmodules-lint-
-
+      # No module cache here on purpose -- see the note in the test job below.
       - name: Install dependencies
         shell: pwsh
         run: ./build.ps1 -Bootstrap -Task Init
@@ -45,9 +34,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     # Guard against a hung step burning the 6-hour default. A cold run --
     # installing every dependency from the gallery -- completes in about
-    # 90 seconds; a warm one in under 60. Windows jobs on refs/heads/main
-    # have been observed hanging indefinitely in 'Build and Test' with no
-    # output at all, which this turns into a fast, visible failure.
+    # 90 seconds. The specific hazard this caught: BuildHelpers' Invoke-Git
+    # calls WaitForExit() before draining stdout, so on Windows a HEAD commit
+    # message larger than the 4096-byte pipe buffer deadlocks the build with
+    # no output at all. Keep merge-commit messages short.
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -57,18 +47,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      # Cache only the CurrentUser module paths -- the same Target build.depend.psd1
-      # installs to. Keyed on the dependency file so a version bump busts the cache.
-      - name: Cache PowerShell modules
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/Documents/PowerShell/Modules
-            ~/.local/share/powershell/Modules
-          key: ${{ runner.os }}-psmodules-${{ hashFiles('build.depend.psd1') }}
-          restore-keys: |
-            ${{ runner.os }}-psmodules-
-
+      # No module cache here on purpose. Measured on JsmOperations, same tree:
+      # ubuntu 27s warm / 27s cold, macOS 16s / 26s, Windows 28s / 50s. The
+      # three jobs run in parallel, so the cache bought at most ~22s of
+      # wall-clock. Against that it made pull-request runs warm and main runs
+      # cold, so a PR could pass on a code path main never exercised -- which
+      # is exactly how a broken bootstrap reached main in #37.
+      # build.ps1 -Bootstrap gates installation on Invoke-PSDepend -Test, so a
+      # runner that already satisfies the dependency file does no install work.
       - name: Run tests
         shell: pwsh
         run: ./build.ps1 -Bootstrap -Task Test

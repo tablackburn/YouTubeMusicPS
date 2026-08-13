@@ -160,7 +160,18 @@ Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Descripti
         if (-not $newestPester) {
             throw 'Pester is not installed.'
         }
-        Import-Module -Name $newestPester -Force -ErrorAction 'Stop'
+
+        # Import by path, not by -Name $newestPester. A PSModuleInfo stringifies to
+        # its Name, so -Name would import 'Pester' by name and resolve the version
+        # itself -- and if an incompatible Pester is already loaded that re-raises
+        # the very collision this task exists to prevent:
+        #
+        #   An incompatible version of the Pester.dll assembly is already loaded.
+        #
+        # Verified against 5.7.1 preloaded: -Name left the session on 5.7.1.
+        # Unload first so the selected version is the only one in play.
+        Get-Module -Name 'Pester' | Remove-Module -Force -ErrorAction 'SilentlyContinue'
+        Import-Module -Name $newestPester.Path -Force -ErrorAction 'Stop'
     }
     Write-Verbose "Using Pester $((Get-Module -Name 'Pester').Version)" -Verbose
 
@@ -230,6 +241,36 @@ Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Descripti
 
         if ($testResult.FailedCount -gt 0) {
             throw 'One or more Pester tests failed'
+        }
+
+        # A run that executed nothing is not a passing run. Every gate above counts
+        # failures, and a run with no executed tests produces zero of all of them.
+        #
+        # Two distinct ways to get there, and TotalCount alone only catches the first:
+        #   1. Nothing discovered -- a bad Run.Path, or a tests directory that stopped
+        #      matching *.Tests.ps1. TotalCount is 0.
+        #   2. Everything discovered but nothing run -- an over-eager filter. Measured
+        #      against Pester 6.1.0 with a filter matching no test name:
+        #        Passed 0 | Failed 0 | Skipped 0 | NotRun 120 | TotalCount 120
+        #      TotalCount is non-zero, every failure count is 0, and the build passed.
+        #
+        # Test.Enabled is the deliberate opt-out and is handled in the PreCondition;
+        # reaching here having run nothing is a fault either way.
+        # Count tests that actually produced a result. Measured against Pester 6.1.0,
+        # three ways to reach "nothing ran" that every failure count reads as success:
+        #
+        #   empty test directory     -> Total 0,   Passed 0, Failed 0, Skipped 0, NotRun 0
+        #   filter matching no test  -> Total 120, Passed 0, Failed 0, Skipped 0, NotRun 120
+        #   every test -Skip         -> Total 3,   Passed 0, Failed 0, Skipped 3, NotRun 0
+        #
+        # TotalCount minus NotRunCount misses the third, and so does filtering on the
+        # per-test .Executed property -- skipped tests report Executed = $true. Only
+        # passed-plus-failed distinguishes a suite that ran from one that did not.
+        # Casts are deliberate: with nothing discovered these come back null.
+        $ranCount = [int]$testResult.PassedCount + [int]$testResult.FailedCount
+        if ($ranCount -le 0) {
+            $counts = "discovered $([int]$testResult.TotalCount), skipped $([int]$testResult.SkippedCount), not run $([int]$testResult.NotRunCount)"
+            throw "Pester ran no tests under [$($PSBPreference.Test.RootDir)] ($counts). Refusing to report success without running tests."
         }
     }
     finally {
