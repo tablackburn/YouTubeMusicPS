@@ -13,6 +13,9 @@ jobs:
   lint:
     name: PSScriptAnalyzer Lint
     runs-on: ubuntu-latest
+    # Guard against a hung step burning the 6-hour default. Lint normally
+    # finishes in well under a minute, cold cache included.
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -40,6 +43,12 @@ jobs:
   test:
     name: Unit Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    # Guard against a hung step burning the 6-hour default. A cold run --
+    # installing every dependency from the gallery -- completes in about
+    # 90 seconds; a warm one in under 60. Windows jobs on refs/heads/main
+    # have been observed hanging indefinitely in 'Build and Test' with no
+    # output at all, which this turns into a fast, visible failure.
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
