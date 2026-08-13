@@ -123,16 +123,20 @@ $PSBPublishDependency = @('Test', 'UpdateReleaseNotes')
 #    cannot see a test file that died during discovery -- it generates no tests
 #    at all, so zero failures reads as success. See the gate below.
 $unitTestPreReqs = {
-    $result = $true
+    # A psake PreCondition returning $false *skips* the task and lets the build succeed.
+    # That is the right behaviour for testing being deliberately switched off, and exactly
+    # the wrong behaviour for a missing test directory -- 'Test' would pass having run
+    # nothing at all. So only Test.Enabled may skip; anything else throws.
     if (-not $PSBPreference.Test.Enabled) {
-        Write-Warning 'Pester testing is not enabled.'
-        $result = $false
+        Write-Warning 'Pester testing is not enabled; skipping UnitTest.'
+        return $false
     }
+
     if (-not (Test-Path -Path $PSBPreference.Test.RootDir)) {
-        Write-Warning "Test directory [$($PSBPreference.Test.RootDir)] not found"
-        $result = $false
+        throw "Test directory [$($PSBPreference.Test.RootDir)] not found, but testing is enabled. Refusing to report success without running tests."
     }
-    return $result
+
+    return $true
 }
 
 # Depends on 'Build' because $PSBPreference.Build.ModuleOutDir is only populated once
@@ -163,7 +167,9 @@ Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Descripti
     # Remove any previously imported project module and import from the output dir
     $moduleManifest = Join-Path -Path $PSBPreference.Build.ModuleOutDir -ChildPath "$($PSBPreference.General.ModuleName).psd1"
     Get-Module -Name $PSBPreference.General.ModuleName | Remove-Module -Force -ErrorAction 'SilentlyContinue'
-    Import-Module -Name $moduleManifest -Force
+    # -ErrorAction Stop so a non-terminating import error fails here rather than letting
+    # the run continue into Pester against a module that was never loaded.
+    Import-Module -Name $moduleManifest -Force -ErrorAction 'Stop'
 
     Push-Location -LiteralPath $PSBPreference.Test.RootDir
 
@@ -211,6 +217,17 @@ Task -Name 'UnitTest' -Depends 'Build' -PreCondition $unitTestPreReqs -Descripti
             $testResult.FailedContainers | ForEach-Object { Write-Warning "Container failed: $($_.Item)" }
             throw "$($testResult.FailedContainersCount) test file(s) failed to run. See 'Container failed' above."
         }
+
+        # Setup/teardown failures are counted separately again. A BeforeAll that throws
+        # can leave FailedCount at 0, and a failing AfterAll leaves both FailedCount and
+        # FailedContainersCount at 0 while the run still reports passing tests -- verified
+        # against Pester 6.1.0:
+        #   failing AfterAll -> Failed 0, FailedContainers 0, FailedBlocks 1, Passed 1
+        if ($testResult.FailedBlocksCount -gt 0) {
+            $testResult.FailedBlocks | ForEach-Object { Write-Warning "Block failed: $($_.Path -join ' > ')" }
+            throw "$($testResult.FailedBlocksCount) setup/teardown block(s) failed. See 'Block failed' above."
+        }
+
         if ($testResult.FailedCount -gt 0) {
             throw 'One or more Pester tests failed'
         }
