@@ -152,12 +152,16 @@ if ($Bootstrap) {
                 Invoke-PSDepend @psDependParameters -Install
             }
             catch {
-                Write-Error "Failed to install required dependencies: $_"
-                Write-Error 'This may be due to locked module files. Please restart the build environment or clear module locks.'
+                # Compose one message and throw it, rather than emitting several
+                # Write-Error calls: $ErrorActionPreference is 'Stop' in this script, so
+                # the first Write-Error terminates and every diagnostic after it -- the
+                # lock hint, the inner exception -- is silently dropped.
+                $installError = "Failed to install required dependencies: $($_.Exception.Message)"
                 if ($_.Exception.InnerException) {
-                    Write-Error "Inner exception: $($_.Exception.InnerException.Message)"
+                    $installError += " Inner exception: $($_.Exception.InnerException.Message)"
                 }
-                throw
+                $installError += ' This may be due to locked module files; restart the build environment or clear module locks.'
+                throw $installError
             }
         }
 
@@ -166,11 +170,12 @@ if ($Bootstrap) {
             Write-Verbose 'Successfully imported required modules.' -Verbose
         }
         catch {
-            Write-Error "Failed to import required dependencies: $_"
+            # Single composed throw -- see the note in the install catch above.
+            $importError = "Failed to import required dependencies: $($_.Exception.Message)"
             if ($_.Exception.InnerException) {
-                Write-Error "Inner exception: $($_.Exception.InnerException.Message)"
+                $importError += " Inner exception: $($_.Exception.InnerException.Message)"
             }
-            throw
+            throw $importError
         }
     }
     else {
