@@ -9,6 +9,15 @@ function Remove-YtmStoredCookies {
     .EXAMPLE
         Remove-YtmStoredCookies
     #>
+    # The plural is accurate rather than sloppy: what is stored is the browser cookie
+    # jar -- the whole Cookie request header, holding many cookies -- so a singular
+    # name would describe something this function never handles. Private helper, so
+    # the name is not part of the exported command surface either.
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseSingularNouns',
+        '',
+        Justification = 'Private helper; the stored value is the whole cookie jar, so the plural is accurate'
+    )]
     [CmdletBinding(SupportsShouldProcess)]
     param ()
 
