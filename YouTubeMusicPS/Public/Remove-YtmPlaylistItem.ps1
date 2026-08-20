@@ -51,6 +51,30 @@ function Remove-YtmPlaylistItem {
 
         Shows what would be removed without actually removing it.
     #>
+    # PowerShell binds ArgumentCompleter script block arguments positionally, so the
+    # completer below has to declare the documented five-parameter signature even though
+    # it only reads $wordToComplete. The analyzer sees the declarations but not the
+    # positional contract that makes them necessary.
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'commandName',
+        Justification = 'false positive: required by the ArgumentCompleter positional signature'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'parameterName',
+        Justification = 'false positive: required by the ArgumentCompleter positional signature'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'commandAst',
+        Justification = 'false positive: required by the ArgumentCompleter positional signature'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'fakeBoundParameters',
+        Justification = 'false positive: required by the ArgumentCompleter positional signature'
+    )]
     [CmdletBinding(SupportsShouldProcess = $true, DefaultParameterSetName = 'Direct')]
     param (
         [Parameter(Mandatory = $true, ParameterSetName = 'Pipeline', ValueFromPipeline = $true)]
@@ -74,7 +98,20 @@ function Remove-YtmPlaylistItem {
                     }
                 }
             }
-            catch { }
+            catch {
+                # Tab completion must stay silent: an unauthenticated session is the
+                # normal case here, and the Write-Error or throw this rule suggests
+                # would paint over the line the user is typing. A bare Write-Debug is
+                # not safe either, because it obeys $DebugPreference: 'Inquire' would
+                # block completion on a confirmation prompt and 'Stop' would throw
+                # straight back out of the completer. Emit only under the one setting
+                # that is non-interactive and non-terminating, so the failure is
+                # recoverable for anyone debugging without ever interrupting anyone
+                # who is not.
+                if ($DebugPreference -eq 'Continue') {
+                    Write-Debug "Playlist name completion failed: $($_.Exception.Message)"
+                }
+            }
         })]
         [string]$Name,
 

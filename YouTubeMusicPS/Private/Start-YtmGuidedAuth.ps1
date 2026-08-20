@@ -3,6 +3,18 @@ function Start-YtmGuidedAuth {
     .SYNOPSIS
         Guides the user through copying cookies from their browser.
     #>
+    # The Start- verb trips the rule, but this changes no state. It prints
+    # instructions, opens a browser tab, waits on Read-Host and returns the clipboard
+    # contents to its caller; nothing is written to disk or to the account.
+    # Connect-YtmAccount is its only caller, is the command that actually persists
+    # anything, and already gates this call behind its own ShouldProcess -- so -WhatIf
+    # and -Confirm are honoured one level up, at the layer that has something to
+    # confirm. Adding SupportsShouldProcess here would prompt twice for one action.
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions',
+        '',
+        Justification = 'Changes no state; Connect-YtmAccount already gates this call with ShouldProcess'
+    )]
     [CmdletBinding()]
     [OutputType([string])]
     param ()

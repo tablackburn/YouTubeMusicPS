@@ -52,6 +52,30 @@ function Get-YtmPlaylist {
         YouTubeMusicPS.Playlist (when listing playlists)
         YouTubeMusicPS.Song (when getting playlist contents)
     #>
+    # PowerShell binds ArgumentCompleter script block arguments positionally, so the
+    # completer below has to declare the documented five-parameter signature even though
+    # it only reads $wordToComplete. The analyzer sees the declarations but not the
+    # positional contract that makes them necessary.
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'commandName',
+        Justification = 'false positive: required by the ArgumentCompleter positional signature'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'parameterName',
+        Justification = 'false positive: required by the ArgumentCompleter positional signature'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'commandAst',
+        Justification = 'false positive: required by the ArgumentCompleter positional signature'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'fakeBoundParameters',
+        Justification = 'false positive: required by the ArgumentCompleter positional signature'
+    )]
     [CmdletBinding(DefaultParameterSetName = 'List')]
     param (
         [Parameter(Mandatory = $true, ParameterSetName = 'ByName', Position = 0)]
@@ -74,7 +98,18 @@ function Get-YtmPlaylist {
                 }
             }
             catch {
-                # Silently fail if not authenticated
+                # Tab completion must stay silent: an unauthenticated session is the
+                # normal case here, and the Write-Error or throw this rule suggests
+                # would paint over the line the user is typing. A bare Write-Debug is
+                # not safe either, because it obeys $DebugPreference: 'Inquire' would
+                # block completion on a confirmation prompt and 'Stop' would throw
+                # straight back out of the completer. Emit only under the one setting
+                # that is non-interactive and non-terminating, so the failure is
+                # recoverable for anyone debugging without ever interrupting anyone
+                # who is not.
+                if ($DebugPreference -eq 'Continue') {
+                    Write-Debug "Playlist name completion failed: $($_.Exception.Message)"
+                }
             }
         })]
         [string]$Name,
@@ -96,11 +131,11 @@ function Get-YtmPlaylist {
     # Determine which mode we're in
     if ($PSCmdlet.ParameterSetName -eq 'List') {
         # List all playlists
-        Get-LibraryPlaylists
+        Get-LibraryPlaylist
     }
     elseif ($PSCmdlet.ParameterSetName -eq 'ByName') {
         # Resolve name to ID and get contents
-        $playlists = Get-LibraryPlaylists
+        $playlists = Get-LibraryPlaylist
         $matchingPlaylist = $playlists | Where-Object { $_.Name -eq $Name }
 
         if (-not $matchingPlaylist) {
@@ -116,15 +151,15 @@ function Get-YtmPlaylist {
             throw "Multiple playlists found matching '$Name'. Please use a more specific name."
         }
 
-        Get-PlaylistContents -PlaylistId $matchingPlaylist.PlaylistId -Limit $Limit
+        Get-PlaylistContent -PlaylistId $matchingPlaylist.PlaylistId -Limit $Limit
     }
     else {
         # Get contents by ID
-        Get-PlaylistContents -PlaylistId $Id -Limit $Limit
+        Get-PlaylistContent -PlaylistId $Id -Limit $Limit
     }
 }
 
-function Get-LibraryPlaylists {
+function Get-LibraryPlaylist {
     <#
     .SYNOPSIS
         Internal helper to retrieve library playlists.
@@ -199,7 +234,7 @@ function Get-LibraryPlaylists {
     }
 }
 
-function Get-PlaylistContents {
+function Get-PlaylistContent {
     <#
     .SYNOPSIS
         Internal helper to retrieve playlist contents.
